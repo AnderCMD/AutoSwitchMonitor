@@ -2,17 +2,26 @@ BINARY := autoswitchmonitor
 
 ifeq ($(OS),Windows_NT)
 	EXT := .exe
+	# Subsistema GUI: sin esto, Windows abre una ventana de consola junto
+	# con el ícono de bandeja cada vez que se ejecuta el .exe.
+	LDFLAGS := -H=windowsgui
 else
 	EXT :=
+	LDFLAGS :=
 endif
 
-.PHONY: build run scan icons vet clean
+.PHONY: build build-debug run scan icons vet clean
 
 build:
-	go build -o $(BINARY)$(EXT) ./cmd/autoswitchmonitor
+	go build -ldflags="$(LDFLAGS)" -o $(BINARY)$(EXT) ./cmd/autoswitchmonitor
 
-run: build
-	./$(BINARY)$(EXT)
+# Build con consola visible (subsistema console), para ver los log.Printf
+# en vivo mientras depuras. Ver también: make run, o `2> debug.log`.
+build-debug:
+	go build -o $(BINARY)-debug$(EXT) ./cmd/autoswitchmonitor
+
+run: build-debug
+	./$(BINARY)-debug$(EXT)
 
 scan:
 	go run ./cmd/autoswitchmonitor -scan
@@ -28,4 +37,4 @@ vet:
 	go vet ./...
 
 clean:
-	rm -f $(BINARY) $(BINARY).exe
+	rm -f $(BINARY) $(BINARY).exe $(BINARY)-debug $(BINARY)-debug.exe

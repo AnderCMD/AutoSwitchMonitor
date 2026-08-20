@@ -1,4 +1,8 @@
 # Binarios compilados en la raíz del repo (no la carpeta cmd/autoswitchmonitor/).
 /autoswitchmonitor
 /autoswitchmonitor.exe
+/autoswitchmonitor-debug
+/autoswitchmonitor-debug.exe
 /dist/
+*~
+*.log

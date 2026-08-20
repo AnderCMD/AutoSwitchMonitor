@@ -64,10 +64,26 @@ no tienes `make`, el equivalente manual es:
 # Windows — el nombre DEBE incluir ".exe" explícitamente: si le pasas
 # -o sin extensión, Go crea el archivo literalmente sin ".exe" y no lo
 # vas a poder ejecutar con doble clic ni encontrar en el Explorador.
-go build -o autoswitchmonitor.exe ./cmd/autoswitchmonitor
+# -ldflags -H=windowsgui evita que se abra una ventana de consola junto
+# con el ícono de bandeja cada vez que corres el .exe.
+go build -ldflags="-H=windowsgui" -o autoswitchmonitor.exe ./cmd/autoswitchmonitor
 
 # macOS / Linux
 go build -o autoswitchmonitor ./cmd/autoswitchmonitor
+```
+
+### Depurar (ver los logs)
+
+El build normal de Windows (`make build`) no muestra ninguna consola, así
+que los `log.Printf` no se ven a simple vista. Para depurar:
+
+```bash
+# Opción 1: build de consola aparte, no afecta al build normal
+make build-debug
+./autoswitchmonitor-debug.exe
+
+# Opción 2: redirige la salida del build normal a un archivo
+.\autoswitchmonitor.exe 2> debug.log
 ```
 
 ### macOS
