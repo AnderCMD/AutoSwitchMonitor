@@ -15,6 +15,7 @@ import (
 	"github.com/AnderCMD/AutoSwitchMonitor/internal/config"
 	"github.com/AnderCMD/AutoSwitchMonitor/internal/ddc"
 	"github.com/AnderCMD/AutoSwitchMonitor/internal/hotkeys"
+	"github.com/AnderCMD/AutoSwitchMonitor/internal/settingsui"
 	"github.com/AnderCMD/AutoSwitchMonitor/internal/usbwatch"
 )
 
@@ -50,33 +51,24 @@ func onReady(cfg config.Config, cfgPath string) {
 	}
 
 	systray.AddSeparator()
+	mSettings := systray.AddMenuItem("Configurar atajos de teclado...", "")
 	mConfig := systray.AddMenuItem("Abrir carpeta de configuración", "")
 	mQuit := systray.AddMenuItem("Salir", "")
 
 	stop := make(chan struct{})
 
 	var mgr hotkeys.Manager
-	var bindings []hotkeys.Binding
-	for _, hk := range cfg.Hotkeys {
-		code, ok := cfg.Inputs[hk.Target]
-		if !ok {
-			log.Printf("hotkey ignorada: entrada %q no existe en config.inputs", hk.Target)
-			continue
+	registerHotkeys(&mgr, cfg)
+
+	go func() {
+		for range mSettings.ClickedCh {
+			settingsui.Open(cfg, func(newCfg config.Config) {
+				cfg.Hotkeys = newCfg.Hotkeys
+				mgr.UnregisterAll()
+				registerHotkeys(&mgr, cfg)
+			})
 		}
-		codeCopy := code
-		bindings = append(bindings, hotkeys.Binding{
-			Modifiers: hk.Modifiers,
-			Key:       hk.Key,
-			OnPress: func() {
-				if err := ddc.SetInput(codeCopy); err != nil {
-					log.Printf("error cambiando a entrada %#x: %v", codeCopy, err)
-				}
-			},
-		})
-	}
-	for _, err := range mgr.RegisterAll(bindings) {
-		log.Println(err)
-	}
+	}()
 
 	if cfg.USBWatch.Enabled {
 		interval := time.Duration(cfg.PollIntervalMS) * time.Millisecond
@@ -112,6 +104,33 @@ func onReady(cfg config.Config, cfgPath string) {
 		mgr.UnregisterAll()
 		systray.Quit()
 	}()
+}
+
+// registerHotkeys registra en mgr los hotkeys definidos en cfg.Hotkeys.
+// Se usa tanto al arrancar como después de guardar cambios desde
+// settingsui (previo mgr.UnregisterAll()).
+func registerHotkeys(mgr *hotkeys.Manager, cfg config.Config) {
+	var bindings []hotkeys.Binding
+	for _, hk := range cfg.Hotkeys {
+		code, ok := cfg.Inputs[hk.Target]
+		if !ok {
+			log.Printf("hotkey ignorada: entrada %q no existe en config.inputs", hk.Target)
+			continue
+		}
+		codeCopy := code
+		bindings = append(bindings, hotkeys.Binding{
+			Modifiers: hk.Modifiers,
+			Key:       hk.Key,
+			OnPress: func() {
+				if err := ddc.SetInput(codeCopy); err != nil {
+					log.Printf("error cambiando a entrada %#x: %v", codeCopy, err)
+				}
+			},
+		})
+	}
+	for _, err := range mgr.RegisterAll(bindings) {
+		log.Println(err)
+	}
 }
 
 func openInFileManager(path string) {

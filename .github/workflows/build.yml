@@ -28,6 +28,12 @@ jobs:
         with:
           go-version: "1.23"
 
+      # cgo (systray, hotkey, webview) necesita un compilador C real; el
+      # runner de Windows no trae mingw/gcc por defecto.
+      - name: Install mingw (Windows)
+        if: runner.os == 'Windows'
+        uses: egor-tensin/setup-mingw@v2
+
       - name: go vet
         run: go vet ./...
 

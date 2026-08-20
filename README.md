@@ -46,11 +46,17 @@ control en ese momento es quien manda el cambio.
 
 ## Instalación / build
 
-Necesitas Go 1.21+ y `CGO_ENABLED=1` (viene activado por defecto si tienes
-un compilador C instalado; en Windows, `winget install GoLang.Go` ya trae
-lo necesario en la mayoría de los casos — si falla el build, instala
-[TDM-GCC](https://jmeubank.github.io/tdm-gcc/) o usa
-`winget install -e --id BrechtSanders.WinLibs.POSIX.UCRT`).
+Necesitas Go 1.21+ y un compilador C (`CGO_ENABLED=1`) — lo requieren
+`getlantern/systray`, `golang.design/x/hotkey` y la ventana de
+configuración (`webview`). En Windows:
+
+```bash
+winget install -e --id BrechtSanders.WinLibs.POSIX.UCRT
+```
+
+y asegúrate de que su carpeta `mingw64\bin` (con `gcc.exe`) quede en el
+`PATH`. En macOS ya viene con las Command Line Tools de Xcode
+(`xcode-select --install` si no las tienes).
 
 ```bash
 make build
@@ -169,7 +175,16 @@ En cada `config.yaml`, `own_input` debe ser la entrada de *esa* PC:
 ### 4. Hotkeys
 
 Por defecto: `Ctrl+Alt+1` → DP1, `Ctrl+Alt+2` → HDMI1, `Ctrl+Alt+3` →
-HDMI2, iguales en las 3 PCs. Edítalos libremente en `config.yaml`:
+HDMI2, iguales en las 3 PCs.
+
+**Desde la app** (recomendado): clic en el ícono de bandeja → **"Configurar
+atajos de teclado..."**. Se abre una ventana donde puedes agregar/quitar
+atajos, cambiar a qué entrada apunta cada uno, y grabar la combinación en
+vivo (clic en "Grabar" y presiona las teclas) en vez de escribirla a mano.
+Al guardar, los hotkeys se recargan al instante — no hace falta reiniciar
+la app.
+
+**A mano**, editando `config.yaml`:
 
 ```yaml
 hotkeys:
@@ -180,16 +195,17 @@ hotkeys:
 
 Modificadores válidos: `ctrl`, `shift`, `alt` (o `option`), `win` (o
 `cmd`) — `win`/`cmd` y `alt`/`option` son alias entre sí para que el mismo
-config.yaml sirva en Windows y macOS. Teclas válidas: `0`-`9`, `a`-`z`.
-
-Después de editar `config.yaml`, reinicia la app para que tome los cambios
-(clic derecho en el ícono de bandeja → Salir, y vuelve a abrirla).
+config.yaml sirva en Windows y macOS. Teclas válidas: `0`-`9`, `a`-`z`. Si
+editas el archivo a mano (no desde la ventana de configuración), reinicia
+la app para que tome los cambios (clic derecho en el ícono de bandeja →
+Salir, y vuelve a abrirla).
 
 ## Uso diario
 
 Corre el binario; aparece un ícono en la bandeja del sistema con:
 
 - Un ítem por cada entrada configurada, para cambiar manualmente con el mouse.
+- "Configurar atajos de teclado...".
 - "Abrir carpeta de configuración".
 - "Salir".
 
@@ -215,6 +231,7 @@ internal/ddc/            DDC/CI: nativo por Win32 API en Windows,
 internal/usbwatch/       enumeración USB por sondeo: SetupAPI en Windows
                           (sin libusb/cgo), system_profiler en macOS
 internal/hotkeys/        hotkeys globales (golang.design/x/hotkey)
+internal/settingsui/     ventana "Configurar atajos de teclado..." (webview)
 internal/trayapp/        ícono de bandeja + orquestación
 internal/appicon/        dibujo del ícono, compartido por la bandeja y assets/
 tools/gen-icon/          regenera assets/icon.png y assets/icon.ico
@@ -233,6 +250,18 @@ assets/                  icon.png / icon.ico usados por la bandeja, el
   soportada para esto; el propio DDC/CI en Apple Silicon depende de
   frameworks privados que la comunidad ya mantiene actualizados en esas
   herramientas. Reimplementarlo aquí sería frágil y de alto mantenimiento.
+- **`webview` (WebView2/WKWebView) para la ventana de configuración**: en
+  vez de un toolkit GUI empaquetado (ej. Fyne), se usa el motor de
+  renderizado web que ya trae el sistema operativo — nada de Chromium
+  embebido, y la ventana en sí es solo HTML/CSS/JS local (sin red).
+
+> **Nota macOS:** la ventana de configuración usa
+> `golang.design/x/mainthread` para ejecutarse en el hilo principal, igual
+> que los hotkeys — necesario porque Cocoa (usado por `systray` y por el
+> WKWebView de la ventana) solo permite UI desde ese hilo. Esto se probó a
+> fondo en Windows; en macOS es más sensible a este tipo de reglas de
+> hilos, así que si la ventana no abre o la app se cuelga al abrirla,
+> repórtalo como issue.
 
 ## Contribuir
 

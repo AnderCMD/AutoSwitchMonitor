@@ -4,7 +4,9 @@ go 1.26.7
 
 require (
 	github.com/getlantern/systray v1.2.2
+	github.com/webview/webview_go v0.0.0-20240831120633-6173450d4dd6
 	golang.design/x/hotkey v0.6.1
+	golang.design/x/mainthread v0.3.1
 	golang.org/x/sys v0.47.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -18,5 +20,4 @@ require (
 	github.com/getlantern/ops v0.0.0-20190325191751-d70cb0d6f85f // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c // indirect
-	golang.design/x/mainthread v0.3.0 // indirect
 )
