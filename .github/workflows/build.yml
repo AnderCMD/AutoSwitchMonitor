@@ -1,0 +1,39 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            binary: autoswitchmonitor.exe
+            artifact: autoswitchmonitor-windows-amd64
+          - os: macos-latest
+            binary: autoswitchmonitor
+            artifact: autoswitchmonitor-macos-arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: Build
+        run: go build -o ${{ matrix.binary }} ./cmd/autoswitchmonitor
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.binary }}
