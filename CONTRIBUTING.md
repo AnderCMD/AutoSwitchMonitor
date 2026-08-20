@@ -9,7 +9,7 @@ un PR:
 ```bash
 git clone https://github.com/AnderCMD/AutoSwitchMonitor.git
 cd AutoSwitchMonitor
-make build   # o: go build -o autoswitchmonitor(.exe) ./cmd/autoswitchmonitor
+make build   # o: go build -o AutoSwitchMonitor(.exe) ./cmd/autoswitchmonitor
 make vet
 ```
 

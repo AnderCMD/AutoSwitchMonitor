@@ -15,7 +15,7 @@ labels: bug
 
 **Pasos para reproducir**:
 
-**Log de consola** (corre `autoswitchmonitor.exe` o `./autoswitchmonitor`
+**Log de consola** (corre `AutoSwitchMonitor.exe` o `./AutoSwitchMonitor`
 desde una terminal, no desde el acceso directo, y pega aquí la salida):
 
 ```

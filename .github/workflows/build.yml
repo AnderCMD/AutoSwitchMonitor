@@ -13,12 +13,12 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            binary: autoswitchmonitor.exe
-            artifact: autoswitchmonitor-windows-amd64
+            binary: AutoSwitchMonitor.exe
+            artifact: AutoSwitchMonitor-windows-amd64
             ldflags: -H=windowsgui
           - os: macos-latest
-            binary: autoswitchmonitor
-            artifact: autoswitchmonitor-macos-arm64
+            binary: AutoSwitchMonitor
+            artifact: AutoSwitchMonitor-macos-arm64
             ldflags: ""
     runs-on: ${{ matrix.os }}
     steps:

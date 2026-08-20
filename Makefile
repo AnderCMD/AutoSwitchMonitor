@@ -1,4 +1,4 @@
-BINARY := autoswitchmonitor
+BINARY := AutoSwitchMonitor
 
 ifeq ($(OS),Windows_NT)
 	EXT := .exe

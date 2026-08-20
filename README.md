@@ -56,7 +56,7 @@ lo necesario en la mayoría de los casos — si falla el build, instala
 make build
 ```
 
-Esto genera `autoswitchmonitor.exe` en Windows o `autoswitchmonitor` en
+Esto genera `AutoSwitchMonitor.exe` en Windows o `AutoSwitchMonitor` en
 macOS/Linux (el `Makefile` se encarga de la extensión correcta por SO). Si
 no tienes `make`, el equivalente manual es:
 
@@ -66,10 +66,10 @@ no tienes `make`, el equivalente manual es:
 # vas a poder ejecutar con doble clic ni encontrar en el Explorador.
 # -ldflags -H=windowsgui evita que se abra una ventana de consola junto
 # con el ícono de bandeja cada vez que corres el .exe.
-go build -ldflags="-H=windowsgui" -o autoswitchmonitor.exe ./cmd/autoswitchmonitor
+go build -ldflags="-H=windowsgui" -o AutoSwitchMonitor.exe ./cmd/autoswitchmonitor
 
 # macOS / Linux
-go build -o autoswitchmonitor ./cmd/autoswitchmonitor
+go build -o AutoSwitchMonitor ./cmd/autoswitchmonitor
 ```
 
 ### Depurar (ver los logs)
@@ -80,10 +80,10 @@ que los `log.Printf` no se ven a simple vista. Para depurar:
 ```bash
 # Opción 1: build de consola aparte, no afecta al build normal
 make build-debug
-./autoswitchmonitor-debug.exe
+./AutoSwitchMonitor-debug.exe
 
 # Opción 2: redirige la salida del build normal a un archivo
-.\autoswitchmonitor.exe 2> debug.log
+.\AutoSwitchMonitor.exe 2> debug.log
 ```
 
 ### macOS
@@ -123,7 +123,7 @@ defecto en:
 Puedes ver la ruta exacta con:
 
 ```bash
-autoswitchmonitor -config-path
+AutoSwitchMonitor -config-path
 ```
 
 ### 1. Verifica los códigos DDC/CI de tu monitor
@@ -140,7 +140,7 @@ comunes (`0x01`=VGA, `0x03`=DVI, `0x0f`=DisplayPort1, `0x10`=DisplayPort2,
 Corre, en cada una de las 2 PCs conectadas al KVM:
 
 ```bash
-autoswitchmonitor -scan
+AutoSwitchMonitor -scan
 ```
 
 Deja el comando corriendo y cambia el KVM un par de veces entre las dos
@@ -195,7 +195,7 @@ Corre el binario; aparece un ícono en la bandeja del sistema con:
 
 ### Arrancar automáticamente con el sistema
 
-**Windows:** crea un acceso directo a `autoswitchmonitor.exe` en
+**Windows:** crea un acceso directo a `AutoSwitchMonitor.exe` en
 `shell:startup` (Win+R → `shell:startup`), o usa el Programador de tareas
 con un disparador "al iniciar sesión".
 
