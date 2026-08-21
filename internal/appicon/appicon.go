@@ -1,65 +1,188 @@
-// Package appicon dibuja, en memoria y sin assets externos, el ícono que
-// usa toda la aplicación: el ícono de la bandeja del sistema en tiempo de
-// ejecución y (vía tools/gen-icon) los archivos assets/icon.png /
-// assets/icon.ico que se embeben en el ejecutable de Windows.
+// Package appicon expone los íconos que usa toda la aplicación:
 //
-// Mantener un solo dibujo compartido evita que el ícono de la bandeja y el
-// ícono del .exe/.app se vean distintos entre sí.
+//   - Draw: el ícono "regular" a todo color —anillo de cristal, monitor y
+//     toggle "ON" con brillo— usado en la bandeja de Windows/Linux, el .ico,
+//     el .icns del Dock de macOS y assets/icon.png del README. Se dibuja
+//     como SVG en assets/icon.svg y se rasteriza una vez, en alta
+//     resolución, a icon_master.png (ver tools/render-icon-master); Draw
+//     solo reescala ese PNG embebido al tamaño pedido, sin dependencias
+//     externas ni en tiempo de build ni de ejecución.
+//   - DrawTemplate: una silueta monocroma (negro sobre transparente, con la
+//     pantalla y el toggle "recortados" como hueco) pensada para el ícono de
+//     la barra de menú de macOS vía systray.SetTemplateIcon, que el sistema
+//     recolorea automáticamente a blanco/negro según el tema de la barra.
 package appicon
 
 import (
 	"bytes"
-	"encoding/binary"
+	_ "embed"
 	"image"
 	"image/color"
+	"image/png"
 	"math"
+	"sync"
 )
+
+//go:embed icon_master.png
+var masterPNG []byte
 
 var (
-	colBezel  = color.NRGBA{R: 0x1e, G: 0x29, B: 0x3b, A: 0xff} // slate-800
-	colScreen = color.NRGBA{R: 0x3b, G: 0x82, B: 0xf6, A: 0xff} // blue-500
-	colBadge  = color.NRGBA{R: 0xf5, G: 0x9e, B: 0x0b, A: 0xff} // amber-500
-	colArrow  = color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff}
+	masterOnce sync.Once
+	master     *image.NRGBA
 )
 
-// Draw genera el ícono en un canvas cuadrado de `size` píxeles: un monitor
-// con su base, y una insignia circular con dos flechas curvas ("swap") que
-// representan el cambio de entrada.
-func Draw(size int) *image.NRGBA {
-	s := float64(size)
-	img := image.NewNRGBA(image.Rect(0, 0, size, size))
+func loadMaster() *image.NRGBA {
+	masterOnce.Do(func() {
+		img, err := png.Decode(bytes.NewReader(masterPNG))
+		if err != nil {
+			panic("appicon: no se pudo decodificar icon_master.png: " + err.Error())
+		}
+		master = toNRGBA(img)
+	})
+	return master
+}
 
-	monitor := rect{x0: 0.16 * s, y0: 0.10 * s, x1: 0.84 * s, y1: 0.62 * s}
-	screenInset := 0.035 * s
-	screen := rect{x0: monitor.x0 + screenInset, y0: monitor.y0 + screenInset, x1: monitor.x1 - screenInset, y1: monitor.y1 - screenInset}
-	radius := 0.045 * s
-
-	standTop := rect{x0: s*0.47, y0: monitor.y1, x1: s*0.53, y1: monitor.y1 + 0.09*s}
-	standBase := rect{x0: s * 0.36, y0: standTop.y1, x1: s * 0.64, y1: standTop.y1 + 0.045 * s}
-
-	for y := 0; y < size; y++ {
-		for x := 0; x < size; x++ {
-			px, py := float64(x)+0.5, float64(y)+0.5
-
-			switch {
-			case standBase.contains(px, py):
-				img.SetNRGBA(x, y, colBezel)
-			case standTop.contains(px, py):
-				img.SetNRGBA(x, y, colBezel)
-			case monitor.roundedContains(px, py, radius):
-				img.SetNRGBA(x, y, colBezel)
-			}
-			if screen.roundedContains(px, py, radius*0.6) {
-				img.SetNRGBA(x, y, colScreen)
-			}
+func toNRGBA(img image.Image) *image.NRGBA {
+	if n, ok := img.(*image.NRGBA); ok {
+		return n
+	}
+	b := img.Bounds()
+	out := image.NewNRGBA(b)
+	for y := b.Min.Y; y < b.Max.Y; y++ {
+		for x := b.Min.X; x < b.Max.X; x++ {
+			out.Set(x, y, img.At(x, y))
 		}
 	}
-
-	badgeCx, badgeCy, badgeR := s*0.755, s*0.755, s*0.225
-	drawBadge(img, badgeCx, badgeCy, badgeR)
-
-	return img
+	return out
 }
+
+// Draw devuelve el ícono a todo color en un canvas cuadrado de `size`
+// píxeles, reescalado con promediado de área (correcto en alfa
+// premultiplicado) a partir del master embebido.
+func Draw(size int) *image.NRGBA {
+	m := loadMaster()
+	if size == m.Bounds().Dx() {
+		return m
+	}
+	return resizeNRGBA(m, size)
+}
+
+// resizeNRGBA reescala `src` a un canvas cuadrado de `size` píxeles
+// promediando, por cada píxel de salida, el área que le corresponde en la
+// imagen de origen (con peso fraccional en los bordes) — un downscale de
+// calidad sin depender de ninguna librería externa. El color se promedia en
+// espacio premultiplicado para no ensuciar los bordes transparentes.
+func resizeNRGBA(src *image.NRGBA, size int) *image.NRGBA {
+	sb := src.Bounds()
+	sw, sh := sb.Dx(), sb.Dy()
+	dst := image.NewNRGBA(image.Rect(0, 0, size, size))
+
+	scaleX := float64(sw) / float64(size)
+	scaleY := float64(sh) / float64(size)
+
+	for y := 0; y < size; y++ {
+		srcY0 := float64(y) * scaleY
+		srcY1 := srcY0 + scaleY
+		y0, y1 := int(math.Floor(srcY0)), int(math.Ceil(srcY1))
+
+		for x := 0; x < size; x++ {
+			srcX0 := float64(x) * scaleX
+			srcX1 := srcX0 + scaleX
+			x0, x1 := int(math.Floor(srcX0)), int(math.Ceil(srcX1))
+
+			var rs, gs, bs, as, wsum float64
+			for sy := y0; sy < y1; sy++ {
+				wy := overlap(float64(sy), float64(sy+1), srcY0, srcY1)
+				if wy <= 0 {
+					continue
+				}
+				for sx := x0; sx < x1; sx++ {
+					wx := overlap(float64(sx), float64(sx+1), srcX0, srcX1)
+					if wx <= 0 {
+						continue
+					}
+					w := wx * wy
+					c := src.NRGBAAt(sb.Min.X+sx, sb.Min.Y+sy)
+					a := float64(c.A)
+					rs += float64(c.R) * a * w
+					gs += float64(c.G) * a * w
+					bs += float64(c.B) * a * w
+					as += a * w
+					wsum += w
+				}
+			}
+
+			var r, g, b, a uint8
+			if as > 0 {
+				r = uint8(rs / as)
+				g = uint8(gs / as)
+				b = uint8(bs / as)
+			}
+			if wsum > 0 {
+				a = uint8(as / wsum)
+			}
+			dst.SetNRGBA(x, y, color.NRGBA{R: r, G: g, B: b, A: a})
+		}
+	}
+	return dst
+}
+
+func overlap(a0, a1, b0, b1 float64) float64 {
+	lo := math.Max(a0, b0)
+	hi := math.Min(a1, b1)
+	if hi <= lo {
+		return 0
+	}
+	return hi - lo
+}
+
+// ---- Silueta "template" para la barra de menú de macOS ----
+
+// DrawTemplate genera, con el mismo antialiasing por sobremuestreo que el
+// diseño anterior, una silueta monocroma del mismo glifo (monitor + toggle):
+// negro sólido donde hay bisel/base, y transparente donde estaría la
+// pantalla y la perilla del toggle. macOS la recolorea sola según el tema
+// de la barra de menú.
+func DrawTemplate(size int) *image.NRGBA {
+	const superSample = 4
+	hi := size * superSample
+	big := image.NewNRGBA(image.Rect(0, 0, hi, hi))
+	paintTemplate(big, float64(hi))
+	return downsample(big, size, superSample)
+}
+
+func downsample(src *image.NRGBA, size, factor int) *image.NRGBA {
+	out := image.NewNRGBA(image.Rect(0, 0, size, size))
+	n := factor * factor
+	for y := 0; y < size; y++ {
+		for x := 0; x < size; x++ {
+			var rs, gs, bs, as int
+			for dy := 0; dy < factor; dy++ {
+				for dx := 0; dx < factor; dx++ {
+					c := src.NRGBAAt(x*factor+dx, y*factor+dy)
+					a := int(c.A)
+					rs += int(c.R) * a
+					gs += int(c.G) * a
+					bs += int(c.B) * a
+					as += a
+				}
+			}
+			var r, g, b uint8
+			if as > 0 {
+				r = uint8(rs / as)
+				g = uint8(gs / as)
+				b = uint8(bs / as)
+			}
+			out.SetNRGBA(x, y, color.NRGBA{R: r, G: g, B: b, A: uint8(as / n)})
+		}
+	}
+	return out
+}
+
+var (
+	colBlack       = color.NRGBA{A: 0xff}
+	colTransparent = color.NRGBA{}
+)
 
 type rect struct{ x0, y0, x1, y1 float64 }
 
@@ -92,230 +215,49 @@ func dist(x0, y0, x1, y1 float64) float64 {
 	return math.Sqrt(dx*dx + dy*dy)
 }
 
-// drawBadge pinta un círculo de acento con dos flechas curvas opuestas
-// (símbolo de "swap"/ciclo entre dos entradas).
-func drawBadge(img *image.NRGBA, cx, cy, r float64) {
-	bounds := img.Bounds()
-	ringOuter := r * 0.72
-	ringInner := r * 0.52
-	headR := r * 0.16
+// paintTemplate dibuja el monitor con un toggle "ON" simplificado en negro
+// sólido sobre transparente: la pantalla y la perilla del toggle quedan
+// recortadas (transparentes) para que el glifo se lea con claridad a los
+// 18-22pt de una barra de menú.
+func paintTemplate(img *image.NRGBA, s float64) {
+	monitor := rect{x0: 0.08 * s, y0: 0.14 * s, x1: 0.92 * s, y1: 0.72 * s}
+	screenInset := 0.05 * s
+	screen := rect{x0: monitor.x0 + screenInset, y0: monitor.y0 + screenInset, x1: monitor.x1 - screenInset, y1: monitor.y1 - screenInset}
+	radius := 0.08 * s
 
-	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+	standTop := rect{x0: s*0.47 - 0.015*s, y0: monitor.y1, x1: s*0.47 + 0.085*s, y1: monitor.y1 + 0.06*s}
+	standBase := rect{x0: s * 0.30, y0: standTop.y1, x1: s * 0.70, y1: standTop.y1 + 0.045*s}
+
+	screenW := screen.x1 - screen.x0
+	screenH := screen.y1 - screen.y0
+	pillH := screenH * 0.42
+	pillW := screenW * 0.62
+	pillCx := screen.x0 + screenW/2
+	pillCy := screen.y0 + screenH/2
+	pill := rect{x0: pillCx - pillW/2, y0: pillCy - pillH/2, x1: pillCx + pillW/2, y1: pillCy + pillH/2}
+	pillRadius := pillH / 2
+	knobR := pillH * 0.36
+	knobCx := pill.x1 - pillRadius
+	knobCy := pillCy
+
+	size := int(s)
+	for y := 0; y < size; y++ {
+		for x := 0; x < size; x++ {
 			px, py := float64(x)+0.5, float64(y)+0.5
-			d := dist(px, py, cx, cy)
-			if d <= r {
-				img.SetNRGBA(x, y, colBadge)
+
+			switch {
+			case standBase.contains(px, py), standTop.contains(px, py), monitor.roundedContains(px, py, radius):
+				img.SetNRGBA(x, y, colBlack)
+			}
+			if screen.roundedContains(px, py, radius*0.6) {
+				img.SetNRGBA(x, y, colTransparent)
+				if pill.roundedContains(px, py, pillRadius) {
+					img.SetNRGBA(x, y, colBlack)
+				}
+				if dist(px, py, knobCx, knobCy) <= knobR {
+					img.SetNRGBA(x, y, colTransparent)
+				}
 			}
 		}
 	}
-
-	// Dos arcos opuestos de ~150°, cada uno con una punta de flecha.
-	drawArc(img, cx, cy, ringInner, ringOuter, -20, 160)
-	drawArc(img, cx, cy, ringInner, ringOuter, 160, 340)
-
-	arrowHead(img, cx, cy, (ringInner+ringOuter)/2, 160, headR)
-	arrowHead(img, cx, cy, (ringInner+ringOuter)/2, 340, headR)
-}
-
-func drawArc(img *image.NRGBA, cx, cy, rInner, rOuter, fromDeg, toDeg float64) {
-	bounds := img.Bounds()
-	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-		for x := bounds.Min.X; x < bounds.Max.X; x++ {
-			px, py := float64(x)+0.5, float64(y)+0.5
-			d := dist(px, py, cx, cy)
-			if d < rInner || d > rOuter {
-				continue
-			}
-			angle := math.Atan2(py-cy, px-cx) * 180 / math.Pi
-			if angle < 0 {
-				angle += 360
-			}
-			if angle >= fromDeg && angle <= toDeg {
-				img.SetNRGBA(x, y, colArrow)
-			}
-		}
-	}
-}
-
-func arrowHead(img *image.NRGBA, cx, cy, ringR, atDeg, size float64) {
-	rad := atDeg * math.Pi / 180
-	tipX := cx + ringR*math.Cos(rad)
-	tipY := cy + ringR*math.Sin(rad)
-
-	// Triángulo apuntando en la dirección tangencial del arco.
-	tangent := rad + math.Pi/2
-	baseX1 := tipX - size*math.Cos(rad) + size*0.6*math.Cos(tangent)
-	baseY1 := tipY - size*math.Sin(rad) + size*0.6*math.Sin(tangent)
-	baseX2 := tipX - size*math.Cos(rad) - size*0.6*math.Cos(tangent)
-	baseY2 := tipY - size*math.Sin(rad) - size*0.6*math.Sin(tangent)
-	tip2X := tipX + size*math.Cos(rad)
-	tip2Y := tipY + size*math.Sin(rad)
-
-	minX, maxX := minOf3(tip2X, baseX1, baseX2), maxOf3(tip2X, baseX1, baseX2)
-	minY, maxY := minOf3(tip2Y, baseY1, baseY2), maxOf3(tip2Y, baseY1, baseY2)
-
-	for y := int(minY) - 1; y <= int(maxY)+1; y++ {
-		for x := int(minX) - 1; x <= int(maxX)+1; x++ {
-			if pointInTriangle(float64(x)+0.5, float64(y)+0.5, tip2X, tip2Y, baseX1, baseY1, baseX2, baseY2) {
-				img.SetNRGBA(x, y, colArrow)
-			}
-		}
-	}
-}
-
-func pointInTriangle(px, py, x1, y1, x2, y2, x3, y3 float64) bool {
-	d1 := sign(px, py, x1, y1, x2, y2)
-	d2 := sign(px, py, x2, y2, x3, y3)
-	d3 := sign(px, py, x3, y3, x1, y1)
-	hasNeg := d1 < 0 || d2 < 0 || d3 < 0
-	hasPos := d1 > 0 || d2 > 0 || d3 > 0
-	return !(hasNeg && hasPos)
-}
-
-func sign(px, py, x1, y1, x2, y2 float64) float64 {
-	return (px-x2)*(y1-y2) - (x1-x2)*(py-y2)
-}
-
-func minOf3(a, b, c float64) float64 { return math.Min(a, math.Min(b, c)) }
-func maxOf3(a, b, c float64) float64 { return math.Max(a, math.Max(b, c)) }
-
-// EncodeICO empaqueta una sola imagen NRGBA como un .ico de 32bpp válido.
-// Usado tanto por el ícono de bandeja en Windows como por tools/gen-icon
-// para generar assets/icon.ico.
-func EncodeICO(img *image.NRGBA) []byte {
-	w := img.Bounds().Dx()
-	h := img.Bounds().Dy()
-
-	rowSize := w * 4
-	xorSize := rowSize * h
-	andRowSize := ((w + 31) / 32) * 4
-	andSize := andRowSize * h
-
-	var xor bytes.Buffer
-	for y := h - 1; y >= 0; y-- { // filas de abajo hacia arriba
-		for x := 0; x < w; x++ {
-			c := img.NRGBAAt(x, y)
-			xor.WriteByte(c.B)
-			xor.WriteByte(c.G)
-			xor.WriteByte(c.R)
-			xor.WriteByte(c.A)
-		}
-	}
-	and := make([]byte, andSize) // sin recorte: se usa el canal alfa
-
-	var buf bytes.Buffer
-	binary.Write(&buf, binary.LittleEndian, uint16(0)) // reserved
-	binary.Write(&buf, binary.LittleEndian, uint16(1)) // type = icon
-	binary.Write(&buf, binary.LittleEndian, uint16(1)) // count
-
-	dim := byte(w)
-	if w >= 256 {
-		dim = 0
-	}
-	bytesInRes := uint32(40 + xorSize + andSize)
-	imageOffset := uint32(6 + 16)
-
-	buf.WriteByte(dim)
-	buf.WriteByte(dim)
-	buf.WriteByte(0)
-	buf.WriteByte(0)
-	binary.Write(&buf, binary.LittleEndian, uint16(1))
-	binary.Write(&buf, binary.LittleEndian, uint16(32))
-	binary.Write(&buf, binary.LittleEndian, bytesInRes)
-	binary.Write(&buf, binary.LittleEndian, imageOffset)
-
-	binary.Write(&buf, binary.LittleEndian, uint32(40))
-	binary.Write(&buf, binary.LittleEndian, int32(w))
-	binary.Write(&buf, binary.LittleEndian, int32(h*2))
-	binary.Write(&buf, binary.LittleEndian, uint16(1))
-	binary.Write(&buf, binary.LittleEndian, uint16(32))
-	binary.Write(&buf, binary.LittleEndian, uint32(0))
-	binary.Write(&buf, binary.LittleEndian, uint32(xorSize))
-	binary.Write(&buf, binary.LittleEndian, int32(0))
-	binary.Write(&buf, binary.LittleEndian, int32(0))
-	binary.Write(&buf, binary.LittleEndian, uint32(0))
-	binary.Write(&buf, binary.LittleEndian, uint32(0))
-
-	buf.Write(xor.Bytes())
-	buf.Write(and)
-
-	return buf.Bytes()
-}
-
-// EncodeMultiICO empaqueta varias resoluciones de la misma imagen en un
-// solo .ico (lo que Windows espera para que el ícono se vea nítido en el
-// Explorador, la barra de tareas y los accesos directos).
-func EncodeMultiICO(images []*image.NRGBA) []byte {
-	type entry struct {
-		data []byte
-		w    int
-	}
-	entries := make([]entry, 0, len(images))
-	for _, img := range images {
-		entries = append(entries, entry{data: rawICOImage(img), w: img.Bounds().Dx()})
-	}
-
-	var buf bytes.Buffer
-	binary.Write(&buf, binary.LittleEndian, uint16(0))
-	binary.Write(&buf, binary.LittleEndian, uint16(1))
-	binary.Write(&buf, binary.LittleEndian, uint16(len(entries)))
-
-	offset := uint32(6 + 16*len(entries))
-	for _, e := range entries {
-		dim := byte(e.w)
-		if e.w >= 256 {
-			dim = 0
-		}
-		buf.WriteByte(dim)
-		buf.WriteByte(dim)
-		buf.WriteByte(0)
-		buf.WriteByte(0)
-		binary.Write(&buf, binary.LittleEndian, uint16(1))
-		binary.Write(&buf, binary.LittleEndian, uint16(32))
-		binary.Write(&buf, binary.LittleEndian, uint32(len(e.data)))
-		binary.Write(&buf, binary.LittleEndian, offset)
-		offset += uint32(len(e.data))
-	}
-	for _, e := range entries {
-		buf.Write(e.data)
-	}
-	return buf.Bytes()
-}
-
-// rawICOImage devuelve el bloque BITMAPINFOHEADER+XOR+AND de una imagen,
-// sin el ICONDIR/ICONDIRENTRY (para usarse dentro de un .ico multi-tamaño).
-func rawICOImage(img *image.NRGBA) []byte {
-	w := img.Bounds().Dx()
-	h := img.Bounds().Dy()
-	rowSize := w * 4
-	xorSize := rowSize * h
-	andRowSize := ((w + 31) / 32) * 4
-	andSize := andRowSize * h
-
-	var buf bytes.Buffer
-	binary.Write(&buf, binary.LittleEndian, uint32(40))
-	binary.Write(&buf, binary.LittleEndian, int32(w))
-	binary.Write(&buf, binary.LittleEndian, int32(h*2))
-	binary.Write(&buf, binary.LittleEndian, uint16(1))
-	binary.Write(&buf, binary.LittleEndian, uint16(32))
-	binary.Write(&buf, binary.LittleEndian, uint32(0))
-	binary.Write(&buf, binary.LittleEndian, uint32(xorSize))
-	binary.Write(&buf, binary.LittleEndian, int32(0))
-	binary.Write(&buf, binary.LittleEndian, int32(0))
-	binary.Write(&buf, binary.LittleEndian, uint32(0))
-	binary.Write(&buf, binary.LittleEndian, uint32(0))
-
-	for y := h - 1; y >= 0; y-- {
-		for x := 0; x < w; x++ {
-			c := img.NRGBAAt(x, y)
-			buf.WriteByte(c.B)
-			buf.WriteByte(c.G)
-			buf.WriteByte(c.R)
-			buf.WriteByte(c.A)
-		}
-	}
-	buf.Write(make([]byte, andSize))
-
-	return buf.Bytes()
 }

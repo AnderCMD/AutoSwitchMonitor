@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"gopkg.in/yaml.v3"
 )
@@ -57,6 +58,14 @@ type Config struct {
 }
 
 func Default() Config {
+	// "alt" y "option" son alias del mismo modificador (ver
+	// internal/hotkeys/mods_*.go), pero mostrar el nombre nativo del SO en
+	// el config.yaml recién creado evita que en macOS parezca una config
+	// "de Windows" sin serlo.
+	altKey := "alt"
+	if runtime.GOOS == "darwin" {
+		altKey = "option"
+	}
 	return Config{
 		OwnInput: "hdmi1",
 		Inputs: map[string]int{
@@ -71,9 +80,9 @@ func Default() Config {
 		},
 		PollIntervalMS: 400,
 		Hotkeys: []Hotkey{
-			{Modifiers: []string{"ctrl", "alt"}, Key: "1", Target: "dp1"},
-			{Modifiers: []string{"ctrl", "alt"}, Key: "2", Target: "hdmi1"},
-			{Modifiers: []string{"ctrl", "alt"}, Key: "3", Target: "hdmi2"},
+			{Modifiers: []string{"ctrl", altKey}, Key: "1", Target: "dp1"},
+			{Modifiers: []string{"ctrl", altKey}, Key: "2", Target: "hdmi1"},
+			{Modifiers: []string{"ctrl", altKey}, Key: "3", Target: "hdmi2"},
 		},
 	}
 }

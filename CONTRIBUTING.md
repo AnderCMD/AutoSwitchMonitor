@@ -13,6 +13,10 @@ make build   # o: go build -o AutoSwitchMonitor(.exe) ./cmd/autoswitchmonitor
 make vet
 ```
 
+En macOS, para probar el equivalente real al `.exe` de Windows (doble clic,
+sin consola), usa `make app` en vez de `make build` — arma
+`AutoSwitchMonitor.app` (ver `packaging/darwin/Info.plist`).
+
 Requiere Go 1.21+ y `CGO_ENABLED=1` (lo necesitan `getlantern/systray` y
 `golang.design/x/hotkey`).
 
@@ -26,8 +30,11 @@ internal/usbwatch/       enumeración USB por sondeo (SetupAPI / system_profiler
 internal/hotkeys/        hotkeys globales
 internal/autostart/      activar/desactivar inicio con el sistema
 internal/trayapp/        ícono de bandeja + orquestación
-internal/appicon/        dibujo del ícono (compartido por bandeja y assets/)
-tools/gen-icon/          regenera assets/icon.png y assets/icon.ico
+internal/appicon/        ícono a color (desde icon_master.png embebido) y silueta template de macOS
+assets/icon.svg          diseño fuente del ícono (editar acá los cambios de logo)
+tools/render-icon-master/ rasteriza assets/icon.svg a internal/appicon/icon_master.png (necesita Chrome/Chromium)
+tools/gen-icon/          regenera assets/icon.png, assets/icon.ico y assets/icon.icns desde icon_master.png
+packaging/darwin/        Info.plist del bundle AutoSwitchMonitor.app (make app)
 ```
 
 ## Principios de diseño (léelos antes de proponer una dependencia nueva)
@@ -51,9 +58,12 @@ una terminal, no desde el acceso directo, para ver los `log.Printf`).
 
 - Un PR = un cambio enfocado. Evita mezclar refactors con features.
 - Corre `make vet` antes de abrir el PR.
-- Si tocas `internal/appicon`, corre `make icons` para regenerar
-  `assets/icon.png`, `assets/icon.ico` y los `.syso` de Windows, y
-  commitea esos archivos regenerados.
+- Si cambiás el diseño del logo, editá `assets/icon.svg` y corré
+  `go run ./tools/render-icon-master` (necesita Chrome/Chromium instalado)
+  para regenerar `internal/appicon/icon_master.png`. Después corré
+  `make icons` para regenerar `assets/icon.png`, `assets/icon.ico`,
+  `assets/icon.icns` (solo en macOS, necesita `iconutil`) y los `.syso` de
+  Windows, y commiteá todos esos archivos regenerados.
 - La mayor parte del código son bindings a APIs del SO, difíciles de
   testear sin el hardware real (KVM, monitor real); cuando algo sí se
   puede probar contra el SO sin hardware externo (ej. `internal/autostart`

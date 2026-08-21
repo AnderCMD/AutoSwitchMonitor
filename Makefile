@@ -10,7 +10,7 @@ else
 	LDFLAGS :=
 endif
 
-.PHONY: build build-debug run scan icons vet test clean
+.PHONY: build build-debug run scan icons app vet test clean
 
 build:
 	go build -ldflags="$(LDFLAGS)" -o $(BINARY)$(EXT) ./cmd/autoswitchmonitor
@@ -33,6 +33,20 @@ icons:
 	go run ./tools/gen-icon
 	cd cmd/autoswitchmonitor && go run github.com/tc-hib/go-winres@latest simply --icon ../../assets/icon.ico
 
+# Empaqueta AutoSwitchMonitor.app: en macOS, doble clic en el binario
+# suelto lo abre dentro de una ventana de Terminal (no es un .app). Este
+# target arma el bundle real, equivalente al .exe con -H=windowsgui de
+# Windows: LSUIElement en Info.plist lo declara app de bandeja (sin ícono
+# en el Dock ni ventana de consola).
+app: build
+	rm -rf $(BINARY).app
+	mkdir -p $(BINARY).app/Contents/MacOS $(BINARY).app/Contents/Resources
+	cp $(BINARY) $(BINARY).app/Contents/MacOS/$(BINARY)
+	cp packaging/darwin/Info.plist $(BINARY).app/Contents/Info.plist
+	if [ -f assets/icon.icns ]; then cp assets/icon.icns $(BINARY).app/Contents/Resources/icon.icns; fi
+	codesign --force --deep -s - $(BINARY).app 2>/dev/null || true
+	@echo "Bundle creado: $(BINARY).app (doble clic para abrir)"
+
 vet:
 	go vet ./...
 
@@ -43,3 +57,4 @@ test:
 
 clean:
 	rm -f $(BINARY) $(BINARY).exe $(BINARY)-debug $(BINARY)-debug.exe
+	rm -rf $(BINARY).app

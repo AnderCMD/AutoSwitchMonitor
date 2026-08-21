@@ -21,11 +21,28 @@ import (
 
 // Run arranca la app de bandeja. Bloquea hasta que el usuario elige Salir.
 func Run(cfg config.Config, cfgPath string) {
+	if runtime.GOOS == "darwin" {
+		// golang.design/x/hotkey/mainthread ya corre su propio [NSApp run]
+		// en el hilo principal real del proceso (lo necesita para
+		// CGEventTap). Si aquí llamamos systray.Run (que en macOS también
+		// hace [NSApp run] vía nativeLoop), ese segundo loop arranca desde
+		// la goroutine que mainthread.Init usa para envolver esta función,
+		// no necesariamente en el hilo principal — y cuando el proceso se
+		// lanza vía LaunchServices (Finder/`open`, no una shell directa)
+		// eso cae casi siempre en un hilo de SO distinto, y AppKit truena
+		// con SIGTRAP dentro de [NSApp run] ("no abre nada" al hacer doble
+		// clic en el .app). systray.Register deja el loop real a cargo de
+		// mainthread.Init y solo registra el ícono/menú.
+		done := make(chan struct{})
+		systray.Register(func() { onReady(cfg, cfgPath) }, func() { close(done) })
+		<-done
+		return
+	}
 	systray.Run(func() { onReady(cfg, cfgPath) }, func() {})
 }
 
 func onReady(cfg config.Config, cfgPath string) {
-	systray.SetIcon(trayIconBytes())
+	systray.SetTemplateIcon(trayIconTemplateBytes(), trayIconBytes())
 	systray.SetTooltip("AutoSwitchMonitor — cambio de entrada del monitor")
 
 	names := make([]string, 0, len(cfg.Inputs))

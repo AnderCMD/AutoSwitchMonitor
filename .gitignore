@@ -3,6 +3,9 @@
 /AutoSwitchMonitor.exe
 /AutoSwitchMonitor-debug
 /AutoSwitchMonitor-debug.exe
+# Bundle .app generado por `make app` (ver packaging/darwin/).
+/AutoSwitchMonitor.app
 /dist/
 *~
 *.log
+.DS_Store

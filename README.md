@@ -100,17 +100,73 @@ brew install waydabber/m1ddc/m1ddc
 brew install ddcctl
 ```
 
-> Nota: en Macs Apple Silicon, `m1ddc` **no soporta el puerto HDMI
-> integrado** de los M1/M2 base — solo salidas por USB-C/DisplayPort Alt
-> Mode. Si tu Mac saca video por HDMI directo del chip, el cambio de
-> entrada por software puede no funcionar; es una limitación de Apple, no
-> de esta app.
+> Nota: `m1ddc` manda los comandos DDC/CI por el canal AUX de **USB-C/DisplayPort
+> Alt Mode** — necesita ese canal de punta a punta. Esto falla (típicamente con
+> `DDC communication failure: (iokit/?) unknown subsystem error`) si en cualquier
+> punto del camino hay una conversión a HDMI: el puerto HDMI integrado de los
+> M1/M2 base, o un **adaptador/cable USB-C→HDMI**, casi nunca pasan ese canal
+> aunque el video sí se vea bien. **Los MacBook Air/Pro con Apple Silicon no
+> tienen puerto HDMI físico** — cualquier salida HDMI en ellos ya es, por
+> definición, un cable/adaptador USB-C→HDMI, así que en esos equipos esto no
+> es un caso raro sino el escenario típico. Prueba primero el comando suelto
+> para descartar tu app: `m1ddc display list` y luego `m1ddc display <N> set
+> input <código>` — si eso también falla, es la conexión física, no
+> AutoSwitchMonitor. La forma más confiable de que el DDC/CI funcione en
+> Apple Silicon es una ruta DisplayPort real de punta a punta (cable
+> USB-C→DisplayPort, o USB-C→USB-C si el monitor tiene entrada USB-C con
+> video) — ahí Apple no expone ninguna API oficial, pero al menos el canal
+> AUX llega completo hasta el monitor.
+>
+> Si solo tienes HDMI disponible, **no es 100% imposible, pero depende del
+> chip que trae tu adaptador/cable/hub** — muchos adaptadores baratos de un
+> solo puerto no reenvían el canal DDC, pero varios hubs USB-C multipuerto
+> sí lo hacen. Reportes de la comunidad de
+> [MonitorControl](https://github.com/MonitorControl/MonitorControl/discussions/1247):
+>
+> | Funcionan | No funcionan |
+> |---|---|
+> | Anker USB-C Hub 7-en-1 (con SD-Card) | Syntech USB-C to HDMI Adapter 4K |
+> | Anker USB-C Hub 7-en-1 (con LAN) | Atvoiti USB-C to HDMI Adapter |
+> | | Baseus Typ-C Hub 4K HDMI RJ45 TF 100W |
+>
+> Si tienes un adaptador/hub USB-C→HDMI y quieres probar el tuyo: `m1ddc
+> display list` y luego `m1ddc display <N> set input <código>` (VCP típicos:
+> `0x0f`=DP1, `0x11`=HDMI1, `0x12`=HDMI2) — si eso responde sin error, tu
+> setup sí soporta DDC y AutoSwitchMonitor debería funcionar. La app
+> reintenta cada cambio de entrada 3 veces (el canal DDC es propenso a
+> fallos transitorios incluso en setups que sí funcionan), así que un fallo
+> consistente (no ocasional) suele indicar que el adaptador no reenvía el
+> canal. Si probaste el tuyo, abre un
+> [issue](https://github.com/AnderCMD/AutoSwitchMonitor/issues) contándonos
+> si funcionó o no — la idea es que esta tabla crezca con la comunidad.
 
 > **Estado en macOS:** el código de macOS (`_darwin.go`) sigue la misma API
-> que el de Windows y compila limpio, pero el desarrollo inicial se hizo y
-> probó solo en Windows. Si algo falla en tu Mac, abre un
+> que el de Windows, compila limpio y ya se probó corriendo de verdad en un
+> Mac (Apple Silicon). Si algo falla en el tuyo, abre un
 > [issue](https://github.com/AnderCMD/AutoSwitchMonitor/issues) — se
 > agradecen reportes y PRs de gente con Mac a mano.
+
+#### App de bandeja (equivalente al .exe de Windows)
+
+`go build -o AutoSwitchMonitor ./cmd/autoswitchmonitor` genera un binario
+Unix suelto: si le haces doble clic en Finder, macOS lo abre dentro de una
+ventana de Terminal (no es una app de verdad). Para tener el equivalente
+real del `.exe` de Windows — doble clic, sin consola, sin ícono en el
+Dock, solo el ícono de bandeja — arma el `.app`:
+
+```bash
+make app
+```
+
+Esto compila el binario y arma `AutoSwitchMonitor.app` (usa
+`packaging/darwin/Info.plist`, que marca la app como `LSUIElement`, y
+`assets/icon.icns`, generado por `make icons`). Doble clic para abrirlo, o
+`open AutoSwitchMonitor.app`.
+
+`AutoSwitchMonitor.app` se firma ad-hoc (`codesign -s -`) para que macOS lo
+deje correr — como no está firmado con un Developer ID ni notarizado, la
+primera vez puede que tengas que hacer clic derecho → Abrir en vez de doble
+clic normal, para que Gatekeeper te deje pasar.
 
 ## Configuración
 
@@ -221,10 +277,15 @@ internal/usbwatch/       enumeración USB por sondeo: SetupAPI en Windows
 internal/hotkeys/        hotkeys globales (golang.design/x/hotkey)
 internal/autostart/      activar/desactivar inicio con el sistema
 internal/trayapp/        ícono de bandeja + orquestación
-internal/appicon/        dibujo del ícono, compartido por la bandeja y assets/
-tools/gen-icon/          regenera assets/icon.png y assets/icon.ico
-assets/                  icon.png / icon.ico usados por la bandeja, el
-                          .exe de Windows (embebido vía go-winres) y este README
+internal/appicon/        ícono a color (desde icon_master.png embebido) y silueta
+                          template de la barra de menú de macOS
+tools/render-icon-master/ rasteriza assets/icon.svg a internal/appicon/icon_master.png
+tools/gen-icon/          regenera assets/icon.png, assets/icon.ico y assets/icon.icns
+assets/icon.svg          diseño fuente del ícono (editar acá los cambios de logo)
+assets/                  icon.png / icon.ico / icon.icns usados por la bandeja, el
+                          .exe de Windows (embebido vía go-winres), el
+                          .app de macOS y este README
+packaging/darwin/        Info.plist del bundle AutoSwitchMonitor.app (make app)
 ```
 
 ## Publicar un release
