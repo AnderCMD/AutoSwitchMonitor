@@ -227,6 +227,24 @@ assets/                  icon.png / icon.ico usados por la bandeja, el
                           .exe de Windows (embebido vía go-winres) y este README
 ```
 
+## Publicar un release
+
+Cada push a un tag `v*` (ej. `v1.0.0`) dispara el workflow de GitHub
+Actions, que compila los binarios de Windows y macOS y los publica solos
+como un [Release](https://github.com/AnderCMD/AutoSwitchMonitor/releases)
+con notas generadas automáticamente — no hay que subir ni compilar nada a
+mano.
+
+**Desde VS Code (sin usar la terminal):**
+
+1. Asegúrate de que tu último commit ya esté sincronizado (botón "Sync
+   Changes" / la nube en la barra inferior).
+2. `Ctrl+Shift+P` → escribe **"Git: Create Tag"** → escribe el nombre,
+   ej. `v1.0.0` → Enter (puedes dejar el mensaje vacío).
+3. `Ctrl+Shift+P` → **"Git: Push Tags"** → esto sube el tag a GitHub.
+4. En unos minutos, el Release aparece en la pestaña *Releases* del repo
+   con el `.exe` de Windows y el binario de macOS adjuntos.
+
 ## Decisiones de diseño (por qué está hecho así)
 
 - **Sin libusb/cgo para USB**: se usa SetupAPI en Windows y
