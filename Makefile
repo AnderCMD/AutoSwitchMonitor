@@ -28,12 +28,10 @@ scan:
 
 # Regenera assets/icon.png + assets/icon.ico desde internal/appicon, y el
 # recurso de ícono embebido en el .exe de Windows (cmd/autoswitchmonitor/rsrc_windows_*.syso).
-# --manifest none evita un conflicto de linkeo ("multiple non-default
-# manifests") con el manifest que ya trae webview/WebView2 vía cgo.
-# Solo hace falta correr esto si cambias el dibujo del ícono.
+# Solo hace falta correrlo si cambias el dibujo del ícono.
 icons:
 	go run ./tools/gen-icon
-	cd cmd/autoswitchmonitor && go run github.com/tc-hib/go-winres@latest simply --manifest none --icon ../../assets/icon.ico
+	cd cmd/autoswitchmonitor && go run github.com/tc-hib/go-winres@latest simply --icon ../../assets/icon.ico
 
 vet:
 	go vet ./...

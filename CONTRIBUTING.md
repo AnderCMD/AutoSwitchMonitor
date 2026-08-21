@@ -13,10 +13,8 @@ make build   # o: go build -o AutoSwitchMonitor(.exe) ./cmd/autoswitchmonitor
 make vet
 ```
 
-Requiere Go 1.21+, `CGO_ENABLED=1` y un compilador C real (lo necesitan
-`getlantern/systray`, `golang.design/x/hotkey` y `webview`) — en Windows,
-`winget install -e --id BrechtSanders.WinLibs.POSIX.UCRT` y agrega su
-`mingw64\bin` al PATH; en macOS, las Command Line Tools de Xcode alcanzan.
+Requiere Go 1.21+ y `CGO_ENABLED=1` (lo necesitan `getlantern/systray` y
+`golang.design/x/hotkey`).
 
 ## Estructura
 
@@ -26,7 +24,6 @@ internal/config/         config.yaml
 internal/ddc/            control DDC/CI (nativo en Windows, m1ddc/ddcctl en macOS)
 internal/usbwatch/       enumeración USB por sondeo (SetupAPI / system_profiler)
 internal/hotkeys/        hotkeys globales
-internal/settingsui/     ventana de configuración de atajos (webview)
 internal/trayapp/        ícono de bandeja + orquestación
 internal/appicon/        dibujo del ícono (compartido por bandeja y assets/)
 tools/gen-icon/          regenera assets/icon.png y assets/icon.ico
