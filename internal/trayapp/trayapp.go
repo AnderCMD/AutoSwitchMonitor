@@ -12,6 +12,7 @@ import (
 
 	"github.com/getlantern/systray"
 
+	"github.com/AnderCMD/AutoSwitchMonitor/internal/autostart"
 	"github.com/AnderCMD/AutoSwitchMonitor/internal/config"
 	"github.com/AnderCMD/AutoSwitchMonitor/internal/ddc"
 	"github.com/AnderCMD/AutoSwitchMonitor/internal/hotkeys"
@@ -50,6 +51,32 @@ func onReady(cfg config.Config, cfgPath string) {
 	}
 
 	systray.AddSeparator()
+
+	autostartEnabled, err := autostart.IsEnabled()
+	if err != nil {
+		log.Printf("no se pudo leer el estado de autoarranque: %v", err)
+	}
+	mAutostart := systray.AddMenuItemCheckbox("Iniciar con el sistema", "Abre AutoSwitchMonitor automáticamente al iniciar sesión", autostartEnabled)
+	go func() {
+		for range mAutostart.ClickedCh {
+			var toggleErr error
+			if mAutostart.Checked() {
+				toggleErr = autostart.Disable()
+			} else {
+				toggleErr = autostart.Enable()
+			}
+			if toggleErr != nil {
+				log.Printf("error cambiando autoarranque: %v", toggleErr)
+				continue
+			}
+			if mAutostart.Checked() {
+				mAutostart.Uncheck()
+			} else {
+				mAutostart.Check()
+			}
+		}
+	}()
+
 	mConfig := systray.AddMenuItem("Abrir carpeta de configuración", "")
 	mQuit := systray.AddMenuItem("Salir", "")
 

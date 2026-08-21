@@ -24,6 +24,7 @@ internal/config/         config.yaml
 internal/ddc/            control DDC/CI (nativo en Windows, m1ddc/ddcctl en macOS)
 internal/usbwatch/       enumeración USB por sondeo (SetupAPI / system_profiler)
 internal/hotkeys/        hotkeys globales
+internal/autostart/      activar/desactivar inicio con el sistema
 internal/trayapp/        ícono de bandeja + orquestación
 internal/appicon/        dibujo del ícono (compartido por bandeja y assets/)
 tools/gen-icon/          regenera assets/icon.png y assets/icon.ico
@@ -53,6 +54,8 @@ una terminal, no desde el acceso directo, para ver los `log.Printf`).
 - Si tocas `internal/appicon`, corre `make icons` para regenerar
   `assets/icon.png`, `assets/icon.ico` y los `.syso` de Windows, y
   commitea esos archivos regenerados.
-- No hay tests automatizados por ahora (la mayor parte del código son
-  bindings a APIs del SO, difíciles de testear sin el hardware real);
-  describe en el PR cómo lo probaste manualmente.
+- La mayor parte del código son bindings a APIs del SO, difíciles de
+  testear sin el hardware real (KVM, monitor real); cuando algo sí se
+  puede probar contra el SO sin hardware externo (ej. `internal/autostart`
+  contra el registro/LaunchAgent real), agrega un test — corre `make test`.
+  Para todo lo demás, describe en el PR cómo lo probaste manualmente.

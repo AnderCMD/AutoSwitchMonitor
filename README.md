@@ -190,17 +190,21 @@ Después de editar `config.yaml`, reinicia la app para que tome los cambios
 Corre el binario; aparece un ícono en la bandeja del sistema con:
 
 - Un ítem por cada entrada configurada, para cambiar manualmente con el mouse.
+- "Iniciar con el sistema" (checkbox, ver abajo).
 - "Abrir carpeta de configuración".
 - "Salir".
 
 ### Arrancar automáticamente con el sistema
 
-**Windows:** crea un acceso directo a `AutoSwitchMonitor.exe` en
-`shell:startup` (Win+R → `shell:startup`), o usa el Programador de tareas
-con un disparador "al iniciar sesión".
+Actívalo/desactívalo directamente desde el ícono de bandeja → **"Iniciar
+con el sistema"** (checkbox). No hace falta tocar nada a mano:
 
-**macOS:** Preferencias del Sistema → Elementos de inicio de sesión →
-agrega el binario. La primera vez macOS pedirá permiso de **Accesibilidad**
+- **Windows:** se guarda en `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`
+  (por usuario, sin permisos de administrador).
+- **macOS:** crea un LaunchAgent en
+  `~/Library/LaunchAgents/dev.andercmd.autoswitchmonitor.plist`.
+
+En macOS, la primera vez el sistema pedirá permiso de **Accesibilidad**
 (Ajustes → Privacidad y Seguridad → Accesibilidad) para que los hotkeys
 globales funcionen — es requisito de `golang.design/x/hotkey`, no algo que
 esta app pueda evitar.
@@ -215,6 +219,7 @@ internal/ddc/            DDC/CI: nativo por Win32 API en Windows,
 internal/usbwatch/       enumeración USB por sondeo: SetupAPI en Windows
                           (sin libusb/cgo), system_profiler en macOS
 internal/hotkeys/        hotkeys globales (golang.design/x/hotkey)
+internal/autostart/      activar/desactivar inicio con el sistema
 internal/trayapp/        ícono de bandeja + orquestación
 internal/appicon/        dibujo del ícono, compartido por la bandeja y assets/
 tools/gen-icon/          regenera assets/icon.png y assets/icon.ico

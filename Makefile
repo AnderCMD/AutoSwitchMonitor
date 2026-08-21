@@ -10,7 +10,7 @@ else
 	LDFLAGS :=
 endif
 
-.PHONY: build build-debug run scan icons vet clean
+.PHONY: build build-debug run scan icons vet test clean
 
 build:
 	go build -ldflags="$(LDFLAGS)" -o $(BINARY)$(EXT) ./cmd/autoswitchmonitor
@@ -35,6 +35,11 @@ icons:
 
 vet:
 	go vet ./...
+
+# internal/autostart escribe/borra la entrada real de autoarranque del SO
+# (registro en Windows, LaunchAgent en macOS) y la limpia sola al terminar.
+test:
+	go test ./...
 
 clean:
 	rm -f $(BINARY) $(BINARY).exe $(BINARY)-debug $(BINARY)-debug.exe
