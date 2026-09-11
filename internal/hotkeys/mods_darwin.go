@@ -4,9 +4,9 @@ package hotkeys
 
 import "golang.design/x/hotkey"
 
-// modifierFromName mapea nombres de config.yaml a constantes de macOS.
-// "win" se trata como alias de "cmd" para que el mismo config.yaml sea
-// portable entre Windows y macOS.
+// modifierFromName maps config.yaml names to macOS constants.
+// "win" is treated as an alias for "cmd" so the same config.yaml is
+// portable between Windows and macOS.
 func modifierFromName(name string) (hotkey.Modifier, bool) {
 	switch name {
 	case "ctrl":

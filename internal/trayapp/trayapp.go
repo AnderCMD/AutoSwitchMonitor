@@ -1,5 +1,5 @@
-// Package trayapp implementa el ícono de bandeja/menú y conecta config,
-// ddc, hotkeys y usbwatch en un solo proceso en ejecución.
+// Package trayapp implements the tray/menu icon and wires config, ddc,
+// hotkeys, and usbwatch together in a single running process.
 package trayapp
 
 import (
@@ -19,20 +19,20 @@ import (
 	"github.com/AnderCMD/AutoSwitchMonitor/internal/usbwatch"
 )
 
-// Run arranca la app de bandeja. Bloquea hasta que el usuario elige Salir.
+// Run starts the tray app. Blocks until the user chooses Quit.
 func Run(cfg config.Config, cfgPath string) {
 	if runtime.GOOS == "darwin" {
-		// golang.design/x/hotkey/mainthread ya corre su propio [NSApp run]
-		// en el hilo principal real del proceso (lo necesita para
-		// CGEventTap). Si aquí llamamos systray.Run (que en macOS también
-		// hace [NSApp run] vía nativeLoop), ese segundo loop arranca desde
-		// la goroutine que mainthread.Init usa para envolver esta función,
-		// no necesariamente en el hilo principal — y cuando el proceso se
-		// lanza vía LaunchServices (Finder/`open`, no una shell directa)
-		// eso cae casi siempre en un hilo de SO distinto, y AppKit truena
-		// con SIGTRAP dentro de [NSApp run] ("no abre nada" al hacer doble
-		// clic en el .app). systray.Register deja el loop real a cargo de
-		// mainthread.Init y solo registra el ícono/menú.
+		// golang.design/x/hotkey/mainthread already runs its own [NSApp run]
+		// on the process's real main thread (it needs this for CGEventTap).
+		// If we call systray.Run here (which on macOS also does [NSApp run]
+		// via nativeLoop), that second loop starts from the goroutine that
+		// mainthread.Init uses to wrap this function, not necessarily on the
+		// main thread — and when the process is launched via LaunchServices
+		// (Finder/`open`, not a direct shell) that almost always lands on a
+		// different OS thread, and AppKit crashes with SIGTRAP inside
+		// [NSApp run] ("nothing opens" when double-clicking the .app).
+		// systray.Register leaves the real loop in charge of mainthread.Init
+		// and only registers the icon/menu.
 		done := make(chan struct{})
 		systray.Register(func() { onReady(cfg, cfgPath) }, func() { close(done) })
 		<-done
@@ -43,7 +43,7 @@ func Run(cfg config.Config, cfgPath string) {
 
 func onReady(cfg config.Config, cfgPath string) {
 	systray.SetTemplateIcon(trayIconTemplateBytes(), trayIconBytes())
-	systray.SetTooltip("AutoSwitchMonitor — cambio de entrada del monitor")
+	systray.SetTooltip("AutoSwitchMonitor — monitor input switching")
 
 	names := make([]string, 0, len(cfg.Inputs))
 	for name := range cfg.Inputs {
@@ -57,11 +57,11 @@ func onReady(cfg config.Config, cfgPath string) {
 	for _, name := range names {
 		code := cfg.Inputs[name]
 		label := strings.ToUpper(name)
-		item := systray.AddMenuItem("Cambiar a "+label, "Cambia el monitor a la entrada "+label)
+		item := systray.AddMenuItem("Switch to "+label, "Switches the monitor to the "+label+" input")
 		go func(code int) {
 			for range item.ClickedCh {
 				if err := ddc.SetInput(code); err != nil {
-					log.Printf("error cambiando a entrada %#x: %v", code, err)
+					log.Printf("error switching to input %#x: %v", code, err)
 				}
 			}
 		}(code)
@@ -71,9 +71,9 @@ func onReady(cfg config.Config, cfgPath string) {
 
 	autostartEnabled, err := autostart.IsEnabled()
 	if err != nil {
-		log.Printf("no se pudo leer el estado de autoarranque: %v", err)
+		log.Printf("could not read autostart state: %v", err)
 	}
-	mAutostart := systray.AddMenuItemCheckbox("Iniciar con el sistema", "Abre AutoSwitchMonitor automáticamente al iniciar sesión", autostartEnabled)
+	mAutostart := systray.AddMenuItemCheckbox("Start with system", "Opens AutoSwitchMonitor automatically at login", autostartEnabled)
 	go func() {
 		for range mAutostart.ClickedCh {
 			var toggleErr error
@@ -83,7 +83,7 @@ func onReady(cfg config.Config, cfgPath string) {
 				toggleErr = autostart.Enable()
 			}
 			if toggleErr != nil {
-				log.Printf("error cambiando autoarranque: %v", toggleErr)
+				log.Printf("error toggling autostart: %v", toggleErr)
 				continue
 			}
 			if mAutostart.Checked() {
@@ -94,8 +94,8 @@ func onReady(cfg config.Config, cfgPath string) {
 		}
 	}()
 
-	mConfig := systray.AddMenuItem("Abrir carpeta de configuración", "")
-	mQuit := systray.AddMenuItem("Salir", "")
+	mConfig := systray.AddMenuItem("Open config folder", "")
+	mQuit := systray.AddMenuItem("Quit", "")
 
 	stop := make(chan struct{})
 
@@ -104,7 +104,7 @@ func onReady(cfg config.Config, cfgPath string) {
 	for _, hk := range cfg.Hotkeys {
 		code, ok := cfg.Inputs[hk.Target]
 		if !ok {
-			log.Printf("hotkey ignorada: entrada %q no existe en config.inputs", hk.Target)
+			log.Printf("hotkey ignored: input %q does not exist in config.inputs", hk.Target)
 			continue
 		}
 		codeCopy := code
@@ -113,7 +113,7 @@ func onReady(cfg config.Config, cfgPath string) {
 			Key:       hk.Key,
 			OnPress: func() {
 				if err := ddc.SetInput(codeCopy); err != nil {
-					log.Printf("error cambiando a entrada %#x: %v", codeCopy, err)
+					log.Printf("error switching to input %#x: %v", codeCopy, err)
 				}
 			},
 		})
@@ -131,15 +131,15 @@ func onReady(cfg config.Config, cfgPath string) {
 			err := usbwatch.Watch(cfg.USBWatch.VendorID, cfg.USBWatch.ProductID, interval, stop, func() {
 				code, ok := cfg.Inputs[cfg.OwnInput]
 				if !ok {
-					log.Printf("own_input %q no existe en config.inputs", cfg.OwnInput)
+					log.Printf("own_input %q does not exist in config.inputs", cfg.OwnInput)
 					return
 				}
 				if err := ddc.SetInput(code); err != nil {
-					log.Printf("error cambiando a own_input: %v", err)
+					log.Printf("error switching to own_input: %v", err)
 				}
 			})
 			if err != nil {
-				log.Printf("usbwatch detenido: %v", err)
+				log.Printf("usbwatch stopped: %v", err)
 			}
 		}()
 	}
@@ -173,7 +173,7 @@ func openInFileManager(path string) {
 		cmd = exec.Command("xdg-open", dir)
 	}
 	if err := cmd.Start(); err != nil {
-		log.Printf("no se pudo abrir %s: %v", dir, err)
+		log.Printf("could not open %s: %v", dir, err)
 	}
 }
 

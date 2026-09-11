@@ -6,9 +6,9 @@ import (
 	"image"
 )
 
-// EncodeICO empaqueta una sola imagen NRGBA como un .ico de 32bpp válido.
-// Usado tanto por el ícono de bandeja en Windows como por tools/gen-icon
-// para generar assets/icon.ico.
+// EncodeICO packs a single NRGBA image as a valid 32bpp .ico.
+// Used both by the Windows tray icon and by tools/gen-icon to generate
+// assets/icon.ico.
 func EncodeICO(img *image.NRGBA) []byte {
 	w := img.Bounds().Dx()
 	h := img.Bounds().Dy()
@@ -19,7 +19,7 @@ func EncodeICO(img *image.NRGBA) []byte {
 	andSize := andRowSize * h
 
 	var xor bytes.Buffer
-	for y := h - 1; y >= 0; y-- { // filas de abajo hacia arriba
+	for y := h - 1; y >= 0; y-- { // rows bottom to top
 		for x := 0; x < w; x++ {
 			c := img.NRGBAAt(x, y)
 			xor.WriteByte(c.B)
@@ -28,7 +28,7 @@ func EncodeICO(img *image.NRGBA) []byte {
 			xor.WriteByte(c.A)
 		}
 	}
-	and := make([]byte, andSize) // sin recorte: se usa el canal alfa
+	and := make([]byte, andSize) // no masking: the alpha channel is used instead
 
 	var buf bytes.Buffer
 	binary.Write(&buf, binary.LittleEndian, uint16(0)) // reserved
@@ -69,9 +69,9 @@ func EncodeICO(img *image.NRGBA) []byte {
 	return buf.Bytes()
 }
 
-// EncodeMultiICO empaqueta varias resoluciones de la misma imagen en un
-// solo .ico (lo que Windows espera para que el ícono se vea nítido en el
-// Explorador, la barra de tareas y los accesos directos).
+// EncodeMultiICO packs several resolutions of the same image into a single
+// .ico (what Windows expects so the icon looks sharp in Explorer, the
+// taskbar, and shortcuts).
 func EncodeMultiICO(images []*image.NRGBA) []byte {
 	type entry struct {
 		data []byte
@@ -109,8 +109,8 @@ func EncodeMultiICO(images []*image.NRGBA) []byte {
 	return buf.Bytes()
 }
 
-// rawICOImage devuelve el bloque BITMAPINFOHEADER+XOR+AND de una imagen,
-// sin el ICONDIR/ICONDIRENTRY (para usarse dentro de un .ico multi-tamaño).
+// rawICOImage returns the BITMAPINFOHEADER+XOR+AND block of an image,
+// without the ICONDIR/ICONDIRENTRY (for use inside a multi-size .ico).
 func rawICOImage(img *image.NRGBA) []byte {
 	w := img.Bounds().Dx()
 	h := img.Bounds().Dy()

@@ -1,71 +1,71 @@
-# Contribuir a AutoSwitchMonitor
+# Contributing to AutoSwitchMonitor
 
-¡Gracias por tu interés! Este proyecto es pequeño a propósito — la idea es
-mantenerlo ligero y sin dependencias pesadas. Algunas guías antes de mandar
-un PR:
+Thanks for your interest! This project is intentionally small — the goal
+is to keep it lightweight and free of heavy dependencies. A few guidelines
+before submitting a PR:
 
-## Desarrollo local
+## Local development
 
 ```bash
 git clone https://github.com/AnderCMD/AutoSwitchMonitor.git
 cd AutoSwitchMonitor
-make build   # o: go build -o AutoSwitchMonitor(.exe) ./cmd/autoswitchmonitor
+make build   # or: go build -o AutoSwitchMonitor(.exe) ./cmd/autoswitchmonitor
 make vet
 ```
 
-En macOS, para probar el equivalente real al `.exe` de Windows (doble clic,
-sin consola), usa `make app` en vez de `make build` — arma
-`AutoSwitchMonitor.app` (ver `packaging/darwin/Info.plist`).
+On macOS, to test the real equivalent of the Windows `.exe` (double-click,
+no console), use `make app` instead of `make build` — it builds
+`AutoSwitchMonitor.app` (see `packaging/darwin/Info.plist`).
 
-Requiere Go 1.21+ y `CGO_ENABLED=1` (lo necesitan `getlantern/systray` y
+Requires Go 1.21+ and `CGO_ENABLED=1` (needed by `getlantern/systray` and
 `golang.design/x/hotkey`).
 
-## Estructura
+## Structure
 
 ```
 cmd/autoswitchmonitor/   entry point + CLI
 internal/config/         config.yaml
-internal/ddc/            control DDC/CI (nativo en Windows, m1ddc/ddcctl en macOS)
-internal/usbwatch/       enumeración USB por sondeo (SetupAPI / system_profiler)
-internal/hotkeys/        hotkeys globales
-internal/autostart/      activar/desactivar inicio con el sistema
-internal/trayapp/        ícono de bandeja + orquestación
-internal/appicon/        ícono a color (desde icon_master.png embebido) y silueta template de macOS
-assets/icon.svg          diseño fuente del ícono (editar acá los cambios de logo)
-tools/render-icon-master/ rasteriza assets/icon.svg a internal/appicon/icon_master.png (necesita Chrome/Chromium)
-tools/gen-icon/          regenera assets/icon.png, assets/icon.ico y assets/icon.icns desde icon_master.png
-packaging/darwin/        Info.plist del bundle AutoSwitchMonitor.app (make app)
+internal/ddc/            DDC/CI control (native on Windows, m1ddc/ddcctl on macOS)
+internal/usbwatch/       USB enumeration by polling (SetupAPI / system_profiler)
+internal/hotkeys/        global hotkeys
+internal/autostart/      enable/disable start with system
+internal/trayapp/        tray icon + orchestration
+internal/appicon/        color icon (from embedded icon_master.png) and macOS silhouette template
+assets/icon.svg          source icon design (edit logo changes here)
+tools/render-icon-master/ rasterizes assets/icon.svg to internal/appicon/icon_master.png (needs Chrome/Chromium)
+tools/gen-icon/          regenerates assets/icon.png, assets/icon.ico and assets/icon.icns from icon_master.png
+packaging/darwin/        Info.plist for the AutoSwitchMonitor.app bundle (make app)
 ```
 
-## Principios de diseño (léelos antes de proponer una dependencia nueva)
+## Design principles (read these before proposing a new dependency)
 
-- **Sin libusb/cgo para USB**: usamos las APIs nativas del SO (SetupAPI en
-  Windows, `system_profiler` en macOS) para no distribuir/instalar nada
-  aparte.
-- **DDC/CI nativo solo en Windows** (`Dxva2.dll`). En macOS delegamos en
-  `m1ddc`/`ddcctl` porque Apple no publica una API soportada para esto.
-- Antes de agregar una dependencia nueva, pregúntate si se puede resolver
-  con la librería estándar o una API nativa del SO — el objetivo es que el
-  binario siga siendo pequeño y de arranque instantáneo.
+- **No libusb/cgo for USB**: we use the OS's native APIs (SetupAPI on
+  Windows, `system_profiler` on macOS) so nothing extra needs to be
+  distributed or installed.
+- **Native DDC/CI only on Windows** (`Dxva2.dll`). On macOS we delegate to
+  `m1ddc`/`ddcctl` because Apple doesn't publish a supported API for this.
+- Before adding a new dependency, ask yourself whether it can be solved
+  with the standard library or a native OS API — the goal is for the
+  binary to stay small and start up instantly.
 
-## Reportar bugs / pedir features
+## Reporting bugs / requesting features
 
-Abre un issue. Para bugs, incluye: SO y versión, marca/modelo de monitor,
-marca/modelo del KVM, y el log de consola si la app lo muestra (corre desde
-una terminal, no desde el acceso directo, para ver los `log.Printf`).
+Open an issue. For bugs, include: OS and version, monitor brand/model, KVM
+brand/model, and the console log if the app shows one (run it from a
+terminal, not from the shortcut, to see the `log.Printf` output).
 
 ## Pull requests
 
-- Un PR = un cambio enfocado. Evita mezclar refactors con features.
-- Corre `make vet` antes de abrir el PR.
-- Si cambiás el diseño del logo, editá `assets/icon.svg` y corré
-  `go run ./tools/render-icon-master` (necesita Chrome/Chromium instalado)
-  para regenerar `internal/appicon/icon_master.png`. Después corré
-  `make icons` para regenerar `assets/icon.png`, `assets/icon.ico`,
-  `assets/icon.icns` (solo en macOS, necesita `iconutil`) y los `.syso` de
-  Windows, y commiteá todos esos archivos regenerados.
-- La mayor parte del código son bindings a APIs del SO, difíciles de
-  testear sin el hardware real (KVM, monitor real); cuando algo sí se
-  puede probar contra el SO sin hardware externo (ej. `internal/autostart`
-  contra el registro/LaunchAgent real), agrega un test — corre `make test`.
-  Para todo lo demás, describe en el PR cómo lo probaste manualmente.
+- One PR = one focused change. Avoid mixing refactors with features.
+- Run `make vet` before opening the PR.
+- If you change the logo design, edit `assets/icon.svg` and run
+  `go run ./tools/render-icon-master` (needs Chrome/Chromium installed) to
+  regenerate `internal/appicon/icon_master.png`. Then run `make icons` to
+  regenerate `assets/icon.png`, `assets/icon.ico`, `assets/icon.icns`
+  (macOS only, needs `iconutil`) and the Windows `.syso` files, and commit
+  all of those regenerated files.
+- Most of the code consists of bindings to OS APIs, which are hard to test
+  without real hardware (KVM, real monitor); when something can be tested
+  against the OS without external hardware (e.g. `internal/autostart`
+  against the real registry/LaunchAgent), add a test — run `make test`.
+  For everything else, describe in the PR how you tested it manually.

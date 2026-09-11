@@ -10,16 +10,16 @@ import (
 	"github.com/AnderCMD/AutoSwitchMonitor/internal/appicon"
 )
 
-// trayIconBytes en macOS/Linux debe ser un PNG (systray lo espera así en
-// estas plataformas). Es el ícono "regular" a color, usado como respaldo en
-// Linux (macOS usa trayIconTemplateBytes vía SetTemplateIcon).
+// trayIconBytes on macOS/Linux must be a PNG (systray expects this on
+// these platforms). This is the "regular" full-color icon, used as a
+// fallback on Linux (macOS uses trayIconTemplateBytes via SetTemplateIcon).
 func trayIconBytes() []byte {
 	return encodePNG(appicon.Draw(64))
 }
 
-// trayIconTemplateBytes es la silueta monocroma que macOS recolorea
-// automáticamente (blanco en modo oscuro, negro en modo claro) para que el
-// ícono de la barra de menú concuerde con el resto de los íconos nativos.
+// trayIconTemplateBytes is the monochrome silhouette that macOS automatically
+// recolors (white in dark mode, black in light mode) so the menu bar icon
+// matches the rest of the native icons.
 func trayIconTemplateBytes() []byte {
 	return encodePNG(appicon.DrawTemplate(64))
 }

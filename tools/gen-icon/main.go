@@ -1,9 +1,9 @@
-// Command gen-icon regenera assets/icon.png, assets/icon.ico y (en macOS)
-// assets/icon.icns a partir del mismo dibujo que usa el ícono de la bandeja
-// del sistema (internal/appicon), para que el ícono se vea idéntico en
-// todas partes: bandeja, .exe de Windows, .app de macOS y README.
+// Command gen-icon regenerates assets/icon.png, assets/icon.ico, and (on
+// macOS) assets/icon.icns from the same drawing used by the system tray
+// icon (internal/appicon), so the icon looks identical everywhere: tray,
+// Windows .exe, macOS .app, and the README.
 //
-// Uso: go run ./tools/gen-icon
+// Usage: go run ./tools/gen-icon
 package main
 
 import (
@@ -41,20 +41,20 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Println("generado:", filepath.Join("assets", "icon.png"))
-	log.Println("generado:", filepath.Join("assets", "icon.ico"))
+	log.Println("generated:", filepath.Join("assets", "icon.png"))
+	log.Println("generated:", filepath.Join("assets", "icon.ico"))
 
 	if runtime.GOOS == "darwin" {
 		genICNS(assetsDir)
 	}
 }
 
-// genICNS arma un .iconset con cada tamaño requerido por Apple (renderizado
-// directo con appicon.Draw, sin reescalar bitmaps) y lo empaqueta con
-// iconutil, la herramienta de línea de comandos de macOS para esto.
+// genICNS builds an .iconset with each size Apple requires (rendered
+// directly with appicon.Draw, without rescaling bitmaps) and packages it
+// with iconutil, the macOS command-line tool for this.
 func genICNS(assetsDir string) {
 	if _, err := exec.LookPath("iconutil"); err != nil {
-		log.Println("iconutil no encontrado, se omite assets/icon.icns (solo disponible en macOS)")
+		log.Println("iconutil not found, skipping assets/icon.icns (only available on macOS)")
 		return
 	}
 
@@ -67,7 +67,7 @@ func genICNS(assetsDir string) {
 	}
 	defer os.RemoveAll(iconsetDir)
 
-	// name -> tamaño en píxeles a renderizar.
+	// name -> size in pixels to render.
 	entries := map[string]int{
 		"icon_16x16.png":      16,
 		"icon_16x16@2x.png":   32,
@@ -87,9 +87,9 @@ func genICNS(assetsDir string) {
 	icnsPath := filepath.Join(assetsDir, "icon.icns")
 	cmd := exec.Command("iconutil", "-c", "icns", iconsetDir, "-o", icnsPath)
 	if out, err := cmd.CombinedOutput(); err != nil {
-		log.Fatalf("iconutil falló: %v (%s)", err, out)
+		log.Fatalf("iconutil failed: %v (%s)", err, out)
 	}
-	log.Println("generado:", filepath.Join("assets", "icon.icns"))
+	log.Println("generated:", filepath.Join("assets", "icon.icns"))
 }
 
 func writePNG(path string, img *image.NRGBA) {

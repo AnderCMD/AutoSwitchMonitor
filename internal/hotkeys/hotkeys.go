@@ -1,5 +1,5 @@
-// Package hotkeys registra combinaciones de teclas globales (funcionan aun
-// sin foco en ninguna ventana) usando golang.design/x/hotkey.
+// Package hotkeys registers global key combinations (they work even
+// without focus on any window) using golang.design/x/hotkey.
 package hotkeys
 
 import (
@@ -9,21 +9,21 @@ import (
 	"golang.design/x/hotkey"
 )
 
-// Binding es una combinación de teclas y la acción a ejecutar al presionarla.
+// Binding is a key combination and the action to run when it's pressed.
 type Binding struct {
 	Modifiers []string
 	Key       string
 	OnPress   func()
 }
 
-// Manager mantiene vivas las hotkeys registradas mientras la app corre.
+// Manager keeps the registered hotkeys alive while the app runs.
 type Manager struct {
 	active []*hotkey.Hotkey
 }
 
-// RegisterAll registra todas las combinaciones. Si una falla en registrarse
-// (ej. porque otra app ya la usa), se reporta el error pero se sigue con
-// las demás.
+// RegisterAll registers all the combinations. If one fails to register
+// (e.g. because another app already uses it), the error is reported but
+// the rest continue.
 func (m *Manager) RegisterAll(bindings []Binding) []error {
 	var errs []error
 	for _, b := range bindings {
@@ -39,14 +39,14 @@ func (m *Manager) register(b Binding) error {
 	for _, name := range b.Modifiers {
 		mod, ok := modifierFromName(name)
 		if !ok {
-			return fmt.Errorf("modificador desconocido %q", name)
+			return fmt.Errorf("unknown modifier %q", name)
 		}
 		mods = append(mods, mod)
 	}
 
 	key, ok := keyFromName(b.Key)
 	if !ok {
-		return fmt.Errorf("tecla desconocida %q", b.Key)
+		return fmt.Errorf("unknown key %q", b.Key)
 	}
 
 	hk := hotkey.New(mods, key)
@@ -65,7 +65,7 @@ func (m *Manager) register(b Binding) error {
 	return nil
 }
 
-// UnregisterAll libera todas las hotkeys registradas.
+// UnregisterAll releases all registered hotkeys.
 func (m *Manager) UnregisterAll() {
 	for _, hk := range m.active {
 		hk.Unregister()

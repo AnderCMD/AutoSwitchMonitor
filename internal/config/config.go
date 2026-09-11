@@ -1,8 +1,8 @@
-// Package config carga y guarda la configuración de AutoSwitchMonitor.
+// Package config loads and saves AutoSwitchMonitor's configuration.
 //
-// Cada PC conectada al KVM corre su propia instancia de la app con su propio
-// config.yaml: cada instancia solo sabe "cuál es mi propia entrada de video"
-// y "qué dispositivo USB debo vigilar para saber cuándo el KVM me seleccionó".
+// Each PC connected to the KVM runs its own instance of the app with its
+// own config.yaml: each instance only knows "what is my own video input"
+// and "which USB device I must watch to know when the KVM selected me".
 package config
 
 import (
@@ -14,54 +14,54 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Hotkey define una combinación de teclas que fuerza al monitor a cambiar
-// a una entrada específica, sin importar el estado del KVM.
+// Hotkey defines a key combination that forces the monitor to switch to a
+// specific input, regardless of the KVM's state.
 type Hotkey struct {
-	// Modifiers: combinación de "ctrl", "alt", "shift", "win"/"cmd".
+	// Modifiers: combination of "ctrl", "alt", "shift", "win"/"cmd".
 	Modifiers []string `yaml:"modifiers"`
-	// Key: tecla final, ej. "1", "k", "f13".
+	// Key: final key, e.g. "1", "k", "f13".
 	Key string `yaml:"key"`
-	// Target: nombre lógico de la entrada (debe existir en Inputs).
+	// Target: logical input name (must exist in Inputs).
 	Target string `yaml:"target"`
 }
 
-// USBWatch identifica el dispositivo USB cuya presencia indica que el KVM
-// seleccionó esta PC.
+// USBWatch identifies the USB device whose presence indicates that the KVM
+// selected this PC.
 type USBWatch struct {
-	VendorID  string `yaml:"vendor_id"`  // ej. "046d"
-	ProductID string `yaml:"product_id"` // ej. "c52b"
-	// Enabled permite desactivar la autodetección (ej. en la PC que no
-	// está conectada al KVM) dejando solo los hotkeys manuales.
+	VendorID  string `yaml:"vendor_id"`  // e.g. "046d"
+	ProductID string `yaml:"product_id"` // e.g. "c52b"
+	// Enabled allows disabling autodetection (e.g. on the PC that isn't
+	// connected to the KVM) leaving only the manual hotkeys.
 	Enabled bool `yaml:"enabled"`
 }
 
-// Config es el archivo config.yaml completo.
+// Config is the full config.yaml file.
 type Config struct {
-	// OwnInput es la entrada lógica de este PC (debe existir en Inputs).
-	// Se aplica automáticamente cuando USBWatch detecta que el KVM cambió
-	// a este PC.
+	// OwnInput is this PC's logical input (must exist in Inputs).
+	// It's applied automatically when USBWatch detects that the KVM
+	// switched to this PC.
 	OwnInput string `yaml:"own_input"`
 
-	// Inputs mapea nombres lógicos ("dp1", "hdmi1", "hdmi2") al código VCP
-	// de entrada DDC/CI (VCP 0x60) que usa TU monitor. Estos códigos varían
-	// por fabricante; usa `autoswitchmonitor -list-inputs` o el manual del
-	// monitor para confirmarlos. Valores típicos: DisplayPort1=0x0f,
+	// Inputs maps logical names ("dp1", "hdmi1", "hdmi2") to the DDC/CI
+	// input VCP code (VCP 0x60) used by YOUR monitor. These codes vary by
+	// manufacturer; use `autoswitchmonitor -list-inputs` or the monitor's
+	// manual to confirm them. Typical values: DisplayPort1=0x0f,
 	// HDMI1=0x11, HDMI2=0x12.
 	Inputs map[string]int `yaml:"inputs"`
 
 	USBWatch USBWatch `yaml:"usb_watch"`
 
-	// PollIntervalMS: cada cuánto se revisa la lista de dispositivos USB.
+	// PollIntervalMS: how often the USB device list is checked.
 	PollIntervalMS int `yaml:"poll_interval_ms"`
 
 	Hotkeys []Hotkey `yaml:"hotkeys"`
 }
 
 func Default() Config {
-	// "alt" y "option" son alias del mismo modificador (ver
-	// internal/hotkeys/mods_*.go), pero mostrar el nombre nativo del SO en
-	// el config.yaml recién creado evita que en macOS parezca una config
-	// "de Windows" sin serlo.
+	// "alt" and "option" are aliases for the same modifier (see
+	// internal/hotkeys/mods_*.go), but showing the OS-native name in the
+	// freshly created config.yaml avoids it looking like a "Windows"
+	// config on macOS when it isn't.
 	altKey := "alt"
 	if runtime.GOOS == "darwin" {
 		altKey = "option"
@@ -87,9 +87,8 @@ func Default() Config {
 	}
 }
 
-// Path devuelve la ruta del config.yaml en el directorio de configuración
-// del usuario del SO (%APPDATA% en Windows, ~/Library/Application Support
-// en macOS).
+// Path returns the path to config.yaml in the OS user config directory
+// (%APPDATA% on Windows, ~/Library/Application Support on macOS).
 func Path() (string, error) {
 	dir, err := os.UserConfigDir()
 	if err != nil {
@@ -98,8 +97,8 @@ func Path() (string, error) {
 	return filepath.Join(dir, "AutoSwitchMonitor", "config.yaml"), nil
 }
 
-// Load lee config.yaml; si no existe, escribe y devuelve la configuración
-// por defecto.
+// Load reads config.yaml; if it doesn't exist, it writes and returns the
+// default configuration.
 func Load() (Config, string, error) {
 	path, err := Path()
 	if err != nil {
@@ -110,7 +109,7 @@ func Load() (Config, string, error) {
 	if os.IsNotExist(err) {
 		cfg := Default()
 		if err := Save(cfg); err != nil {
-			return Config{}, path, fmt.Errorf("creando config por defecto: %w", err)
+			return Config{}, path, fmt.Errorf("creating default config: %w", err)
 		}
 		return cfg, path, nil
 	}
@@ -120,12 +119,12 @@ func Load() (Config, string, error) {
 
 	var cfg Config
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return Config{}, path, fmt.Errorf("parseando %s: %w", path, err)
+		return Config{}, path, fmt.Errorf("parsing %s: %w", path, err)
 	}
 	return cfg, path, nil
 }
 
-// Save escribe la configuración a disco, creando el directorio si hace falta.
+// Save writes the configuration to disk, creating the directory if needed.
 func Save(cfg Config) error {
 	path, err := Path()
 	if err != nil {

@@ -1,8 +1,8 @@
-// Package usbwatch detecta, por sondeo (polling), cuándo un dispositivo USB
-// específico (identificado por vendor_id:product_id) aparece o desaparece
-// del sistema. Se usa para saber cuándo el switch KVM seleccionó esta PC:
-// cuando el dispositivo vigilado (ej. el teclado/mouse que pasa por el KVM)
-// pasa de ausente a presente, significa que el KVM apunta a esta PC.
+// Package usbwatch detects, by polling, when a specific USB device
+// (identified by vendor_id:product_id) appears or disappears from the
+// system. It's used to know when the KVM switch has selected this PC: when
+// the watched device (e.g. the keyboard/mouse that goes through the KVM)
+// goes from absent to present, it means the KVM is pointing at this PC.
 package usbwatch
 
 import (
@@ -10,15 +10,15 @@ import (
 	"time"
 )
 
-// Device es un dispositivo USB detectado en el sistema.
+// Device is a USB device detected on the system.
 type Device struct {
-	VendorID  string // hex minúsculas, sin "0x", ej "046d"
-	ProductID string // hex minúsculas, sin "0x", ej "c52b"
+	VendorID  string // lowercase hex, no "0x", e.g. "046d"
+	ProductID string // lowercase hex, no "0x", e.g. "c52b"
 	Name      string
 }
 
-// List devuelve los dispositivos USB actualmente conectados.
-// Implementación específica de SO (ver usbwatch_windows.go / usbwatch_darwin.go).
+// List returns the USB devices currently connected.
+// OS-specific implementation (see usbwatch_windows.go / usbwatch_darwin.go).
 func List() ([]Device, error) {
 	return list()
 }
@@ -40,9 +40,9 @@ func isPresent(vendorID, productID string) (bool, error) {
 	return false, nil
 }
 
-// Watch vigila la presencia de vendorID:productID cada interval, y llama a
-// onBecamePresent cada vez que el dispositivo pasa de ausente a presente
-// (flanco de subida). Bloquea hasta que stop se cierra.
+// Watch watches for the presence of vendorID:productID every interval, and
+// calls onBecamePresent each time the device goes from absent to present
+// (rising edge). Blocks until stop is closed.
 func Watch(vendorID, productID string, interval time.Duration, stop <-chan struct{}, onBecamePresent func()) error {
 	wasPresent, err := isPresent(vendorID, productID)
 	if err != nil {
@@ -59,8 +59,8 @@ func Watch(vendorID, productID string, interval time.Duration, stop <-chan struc
 		case <-ticker.C:
 			present, err := isPresent(vendorID, productID)
 			if err != nil {
-				// Error transitorio de enumeración (permisos, driver, etc.):
-				// lo ignoramos y reintentamos en el siguiente tick.
+				// Transient enumeration error (permissions, driver, etc.):
+				// ignore it and retry on the next tick.
 				continue
 			}
 			if present && !wasPresent {

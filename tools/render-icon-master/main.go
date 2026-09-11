@@ -1,17 +1,16 @@
-// Command render-icon-master rasteriza assets/icon.svg (el diseño fuente:
-// anillo de cristal, monitor y toggle "ON") a un PNG maestro de alta
-// resolución, usando Chrome/Chromium en modo headless —el propio dibujo usa
-// <text> y filtros (feGaussianBlur, feDropShadow) que los rasterizadores
-// SVG puros de Go no soportan, así que este paso necesita un motor de
-// render real—.
+// Command render-icon-master rasterizes assets/icon.svg (the source
+// design: glass ring, monitor, and "ON" toggle) into a high-resolution
+// master PNG, using headless Chrome/Chromium —the drawing itself uses
+// <text> and filters (feGaussianBlur, feDropShadow) that Go's pure SVG
+// rasterizers don't support, so this step needs a real render engine—.
 //
-// Solo hace falta correrlo cuando cambia el diseño del logo (assets/icon.svg):
-// escribe internal/appicon/icon_master.png, que gen-icon (100% Go, sin
-// dependencias externas) reescala luego a cada tamaño para
-// assets/icon.png/.ico/.icns y el ícono de la bandeja en tiempo de
-// ejecución. No hace falta Chrome para compilar ni para correr la app.
+// Only needs to be run when the logo design changes (assets/icon.svg):
+// it writes internal/appicon/icon_master.png, which gen-icon (100% Go, no
+// external dependencies) then rescales to every size for
+// assets/icon.png/.ico/.icns and the tray icon at runtime. Chrome isn't
+// needed to build or run the app.
 //
-// Uso: go run ./tools/render-icon-master
+// Usage: go run ./tools/render-icon-master
 package main
 
 import (
@@ -34,7 +33,7 @@ func main() {
 
 	svgPath := filepath.Join(root, "assets", "icon.svg")
 	if _, err := os.Stat(svgPath); err != nil {
-		log.Fatalf("no se encontró %s: %v", svgPath, err)
+		log.Fatalf("could not find %s: %v", svgPath, err)
 	}
 
 	chrome, err := findChrome()
@@ -54,15 +53,15 @@ func main() {
 	}
 	cmd := exec.Command(chrome, args...)
 	if out, err := cmd.CombinedOutput(); err != nil {
-		log.Fatalf("chrome headless falló: %v\n%s", err, out)
+		log.Fatalf("headless chrome failed: %v\n%s", err, out)
 	}
 
 	if err := verifySquarePNG(outPath, masterSize); err != nil {
 		log.Fatal(err)
 	}
 
-	log.Println("generado:", filepath.Join("internal", "appicon", "icon_master.png"))
-	log.Println("corré 'go run ./tools/gen-icon' para regenerar assets/icon.png/.ico/.icns")
+	log.Println("generated:", filepath.Join("internal", "appicon", "icon_master.png"))
+	log.Println("run 'go run ./tools/gen-icon' to regenerate assets/icon.png/.ico/.icns")
 }
 
 func findChrome() (string, error) {
@@ -88,7 +87,7 @@ func findChrome() (string, error) {
 			return p, nil
 		}
 	}
-	return "", fmt.Errorf("no se encontró Chrome/Chromium instalado; instalalo o ajustá tools/render-icon-master")
+	return "", fmt.Errorf("could not find an installed Chrome/Chromium; install it or adjust tools/render-icon-master")
 }
 
 func verifySquarePNG(path string, want int) error {
@@ -102,7 +101,7 @@ func verifySquarePNG(path string, want int) error {
 		return err
 	}
 	if cfg.Width != want || cfg.Height != want {
-		return fmt.Errorf("%s midió %dx%d, se esperaba %dx%d (revisá la versión de chrome headless)", path, cfg.Width, cfg.Height, want, want)
+		return fmt.Errorf("%s measured %dx%d, expected %dx%d (check the headless chrome version)", path, cfg.Width, cfg.Height, want, want)
 	}
 	return nil
 }

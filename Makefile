@@ -2,8 +2,8 @@ BINARY := AutoSwitchMonitor
 
 ifeq ($(OS),Windows_NT)
 	EXT := .exe
-	# Subsistema GUI: sin esto, Windows abre una ventana de consola junto
-	# con el ícono de bandeja cada vez que se ejecuta el .exe.
+	# GUI subsystem: without this, Windows opens a console window alongside
+	# the tray icon every time the .exe runs.
 	LDFLAGS := -H=windowsgui
 else
 	EXT :=
@@ -15,8 +15,8 @@ endif
 build:
 	go build -ldflags="$(LDFLAGS)" -o $(BINARY)$(EXT) ./cmd/autoswitchmonitor
 
-# Build con consola visible (subsistema console), para ver los log.Printf
-# en vivo mientras depuras. Ver también: make run, o `2> debug.log`.
+# Build with a visible console (console subsystem), to see log.Printf
+# output live while debugging. See also: make run, or `2> debug.log`.
 build-debug:
 	go build -o $(BINARY)-debug$(EXT) ./cmd/autoswitchmonitor
 
@@ -26,18 +26,18 @@ run: build-debug
 scan:
 	go run ./cmd/autoswitchmonitor -scan
 
-# Regenera assets/icon.png + assets/icon.ico desde internal/appicon, y el
-# recurso de ícono embebido en el .exe de Windows (cmd/autoswitchmonitor/rsrc_windows_*.syso).
-# Solo hace falta correrlo si cambias el dibujo del ícono.
+# Regenerates assets/icon.png + assets/icon.ico from internal/appicon, and
+# the icon resource embedded in the Windows .exe (cmd/autoswitchmonitor/rsrc_windows_*.syso).
+# Only needs to be run if you change the icon artwork.
 icons:
 	go run ./tools/gen-icon
 	cd cmd/autoswitchmonitor && go run github.com/tc-hib/go-winres@latest simply --icon ../../assets/icon.ico
 
-# Empaqueta AutoSwitchMonitor.app: en macOS, doble clic en el binario
-# suelto lo abre dentro de una ventana de Terminal (no es un .app). Este
-# target arma el bundle real, equivalente al .exe con -H=windowsgui de
-# Windows: LSUIElement en Info.plist lo declara app de bandeja (sin ícono
-# en el Dock ni ventana de consola).
+# Packages AutoSwitchMonitor.app: on macOS, double-clicking the bare
+# binary opens it inside a Terminal window (it's not a .app). This
+# target builds the real bundle, equivalent to Windows' .exe with
+# -H=windowsgui: LSUIElement in Info.plist declares it a tray app (no
+# Dock icon, no console window).
 app: build
 	rm -rf $(BINARY).app
 	mkdir -p $(BINARY).app/Contents/MacOS $(BINARY).app/Contents/Resources
@@ -45,13 +45,13 @@ app: build
 	cp packaging/darwin/Info.plist $(BINARY).app/Contents/Info.plist
 	if [ -f assets/icon.icns ]; then cp assets/icon.icns $(BINARY).app/Contents/Resources/icon.icns; fi
 	codesign --force --deep -s - $(BINARY).app 2>/dev/null || true
-	@echo "Bundle creado: $(BINARY).app (doble clic para abrir)"
+	@echo "Bundle created: $(BINARY).app (double-click to open)"
 
 vet:
 	go vet ./...
 
-# internal/autostart escribe/borra la entrada real de autoarranque del SO
-# (registro en Windows, LaunchAgent en macOS) y la limpia sola al terminar.
+# internal/autostart writes/removes the real OS autostart entry
+# (registry on Windows, LaunchAgent on macOS) and cleans up after itself.
 test:
 	go test ./...
 

@@ -10,14 +10,14 @@ import (
 )
 
 var (
-	user32  = windows.NewLazySystemDLL("user32.dll")
-	dxva2   = windows.NewLazySystemDLL("dxva2.dll")
+	user32 = windows.NewLazySystemDLL("user32.dll")
+	dxva2  = windows.NewLazySystemDLL("dxva2.dll")
 
-	procEnumDisplayMonitors               = user32.NewProc("EnumDisplayMonitors")
-	procGetNumberOfPhysicalMonitors        = dxva2.NewProc("GetNumberOfPhysicalMonitorsFromHMONITOR")
-	procGetPhysicalMonitorsFromHMONITOR    = dxva2.NewProc("GetPhysicalMonitorsFromHMONITOR")
-	procSetVCPFeature                      = dxva2.NewProc("SetVCPFeature")
-	procDestroyPhysicalMonitors            = dxva2.NewProc("DestroyPhysicalMonitors")
+	procEnumDisplayMonitors             = user32.NewProc("EnumDisplayMonitors")
+	procGetNumberOfPhysicalMonitors     = dxva2.NewProc("GetNumberOfPhysicalMonitorsFromHMONITOR")
+	procGetPhysicalMonitorsFromHMONITOR = dxva2.NewProc("GetPhysicalMonitorsFromHMONITOR")
+	procSetVCPFeature                   = dxva2.NewProc("SetVCPFeature")
+	procDestroyPhysicalMonitors         = dxva2.NewProc("DestroyPhysicalMonitors")
 )
 
 // physicalMonitor mirrors the Win32 PHYSICAL_MONITOR struct.
@@ -27,18 +27,18 @@ type physicalMonitor struct {
 	Description [128]uint16
 }
 
-// setInput enumera todos los monitores físicos conectados y envía
-// SetVCPFeature(0x60, vcpCode) a cada uno. Si un monitor no soporta DDC/CI
-// o no está en la entrada activa, la llamada puede fallar silenciosamente
-// para ese monitor (comportamiento normal de DDC/CI); seguimos con los
-// demás y solo devolvemos error si ninguno lo aceptó.
+// setInput enumerates all connected physical monitors and sends
+// SetVCPFeature(0x60, vcpCode) to each one. If a monitor doesn't support
+// DDC/CI or isn't on the active input, the call may fail silently for
+// that monitor (normal DDC/CI behavior); we continue with the rest and
+// only return an error if none of them accepted it.
 func setInput(vcpCode int) error {
 	hmonitors, err := enumMonitors()
 	if err != nil {
 		return err
 	}
 	if len(hmonitors) == 0 {
-		return fmt.Errorf("no se encontraron monitores")
+		return fmt.Errorf("no monitors found")
 	}
 
 	var lastErr error
@@ -57,7 +57,7 @@ func setInput(vcpCode int) error {
 				uintptr(vcpCode),
 			)
 			if ok == 0 {
-				lastErr = fmt.Errorf("SetVCPFeature falló: %v", callErr)
+				lastErr = fmt.Errorf("SetVCPFeature failed: %v", callErr)
 			} else {
 				succeeded++
 			}
@@ -76,12 +76,12 @@ func enumMonitors() ([]windows.Handle, error) {
 
 	cb := windows.NewCallback(func(hMonitor windows.Handle, _ windows.Handle, _ uintptr, _ uintptr) uintptr {
 		handles = append(handles, hMonitor)
-		return 1 // continuar enumeración
+		return 1 // continue enumeration
 	})
 
 	ret, _, callErr := procEnumDisplayMonitors.Call(0, 0, cb, 0)
 	if ret == 0 {
-		return nil, fmt.Errorf("EnumDisplayMonitors falló: %v", callErr)
+		return nil, fmt.Errorf("EnumDisplayMonitors failed: %v", callErr)
 	}
 	return handles, nil
 }
@@ -93,7 +93,7 @@ func getPhysicalMonitors(hMonitor windows.Handle) ([]physicalMonitor, error) {
 		uintptr(unsafe.Pointer(&count)),
 	)
 	if ret == 0 {
-		return nil, fmt.Errorf("GetNumberOfPhysicalMonitorsFromHMONITOR falló: %v", callErr)
+		return nil, fmt.Errorf("GetNumberOfPhysicalMonitorsFromHMONITOR failed: %v", callErr)
 	}
 	if count == 0 {
 		return nil, nil
@@ -106,7 +106,7 @@ func getPhysicalMonitors(hMonitor windows.Handle) ([]physicalMonitor, error) {
 		uintptr(unsafe.Pointer(&monitors[0])),
 	)
 	if ret == 0 {
-		return nil, fmt.Errorf("GetPhysicalMonitorsFromHMONITOR falló: %v", callErr)
+		return nil, fmt.Errorf("GetPhysicalMonitorsFromHMONITOR failed: %v", callErr)
 	}
 	return monitors, nil
 }

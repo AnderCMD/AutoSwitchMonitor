@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 )
 
-// Un LaunchAgent por-usuario (~/Library/LaunchAgents) es el equivalente en
-// macOS al "Run" key de Windows: no necesita privilegios de administrador
-// y macOS lo revisa solo al iniciar sesión.
+// A per-user LaunchAgent (~/Library/LaunchAgents) is macOS's equivalent of
+// Windows' "Run" key: it doesn't need administrator privileges, and macOS
+// checks it automatically at login.
 const label = "dev.andercmd.autoswitchmonitor"
 
 func plistPath() (string, error) {
@@ -68,9 +68,8 @@ func enable() error {
 		return err
 	}
 
-	// launchctl puede fallar si ya estaba cargado con contenido viejo;
-	// no es fatal, macOS lo vuelve a leer en el siguiente login de todas
-	// formas.
+	// launchctl may fail if it was already loaded with old content; that's
+	// not fatal, since macOS re-reads it at the next login anyway.
 	_ = exec.Command("launchctl", "load", path).Run()
 	return nil
 }

@@ -1,16 +1,16 @@
-// Package appicon expone los íconos que usa toda la aplicación:
+// Package appicon exposes the icons used across the whole application:
 //
-//   - Draw: el ícono "regular" a todo color —anillo de cristal, monitor y
-//     toggle "ON" con brillo— usado en la bandeja de Windows/Linux, el .ico,
-//     el .icns del Dock de macOS y assets/icon.png del README. Se dibuja
-//     como SVG en assets/icon.svg y se rasteriza una vez, en alta
-//     resolución, a icon_master.png (ver tools/render-icon-master); Draw
-//     solo reescala ese PNG embebido al tamaño pedido, sin dependencias
-//     externas ni en tiempo de build ni de ejecución.
-//   - DrawTemplate: una silueta monocroma (negro sobre transparente, con la
-//     pantalla y el toggle "recortados" como hueco) pensada para el ícono de
-//     la barra de menú de macOS vía systray.SetTemplateIcon, que el sistema
-//     recolorea automáticamente a blanco/negro según el tema de la barra.
+//   - Draw: the "regular" full-color icon —glass ring, monitor, and an
+//     "ON" toggle with a glow— used in the Windows/Linux tray, the .ico,
+//     the macOS Dock .icns, and the README's assets/icon.png. It's drawn
+//     as an SVG in assets/icon.svg and rasterized once, at high
+//     resolution, into icon_master.png (see tools/render-icon-master); Draw
+//     only rescales that embedded PNG to the requested size, with no
+//     external dependencies at either build or run time.
+//   - DrawTemplate: a monochrome silhouette (black on transparent, with the
+//     screen and the toggle "cut out" as a hole) meant for the macOS menu
+//     bar icon via systray.SetTemplateIcon, which the system automatically
+//     recolors to white/black depending on the menu bar theme.
 package appicon
 
 import (
@@ -35,7 +35,7 @@ func loadMaster() *image.NRGBA {
 	masterOnce.Do(func() {
 		img, err := png.Decode(bytes.NewReader(masterPNG))
 		if err != nil {
-			panic("appicon: no se pudo decodificar icon_master.png: " + err.Error())
+			panic("appicon: could not decode icon_master.png: " + err.Error())
 		}
 		master = toNRGBA(img)
 	})
@@ -56,9 +56,9 @@ func toNRGBA(img image.Image) *image.NRGBA {
 	return out
 }
 
-// Draw devuelve el ícono a todo color en un canvas cuadrado de `size`
-// píxeles, reescalado con promediado de área (correcto en alfa
-// premultiplicado) a partir del master embebido.
+// Draw returns the full-color icon on a square canvas of `size` pixels,
+// rescaled with area averaging (correct under premultiplied alpha) from
+// the embedded master.
 func Draw(size int) *image.NRGBA {
 	m := loadMaster()
 	if size == m.Bounds().Dx() {
@@ -67,11 +67,11 @@ func Draw(size int) *image.NRGBA {
 	return resizeNRGBA(m, size)
 }
 
-// resizeNRGBA reescala `src` a un canvas cuadrado de `size` píxeles
-// promediando, por cada píxel de salida, el área que le corresponde en la
-// imagen de origen (con peso fraccional en los bordes) — un downscale de
-// calidad sin depender de ninguna librería externa. El color se promedia en
-// espacio premultiplicado para no ensuciar los bordes transparentes.
+// resizeNRGBA rescales `src` to a square canvas of `size` pixels by
+// averaging, for each output pixel, the area it corresponds to in the
+// source image (with fractional weight at the edges) — a quality
+// downscale with no dependency on any external library. Color is averaged
+// in premultiplied space so transparent edges don't get muddied.
 func resizeNRGBA(src *image.NRGBA, size int) *image.NRGBA {
 	sb := src.Bounds()
 	sw, sh := sb.Dx(), sb.Dy()
@@ -136,13 +136,13 @@ func overlap(a0, a1, b0, b1 float64) float64 {
 	return hi - lo
 }
 
-// ---- Silueta "template" para la barra de menú de macOS ----
+// ---- "Template" silhouette for the macOS menu bar ----
 
-// DrawTemplate genera, con el mismo antialiasing por sobremuestreo que el
-// diseño anterior, una silueta monocroma del mismo glifo (monitor + toggle):
-// negro sólido donde hay bisel/base, y transparente donde estaría la
-// pantalla y la perilla del toggle. macOS la recolorea sola según el tema
-// de la barra de menú.
+// DrawTemplate generates, with the same supersampled antialiasing as the
+// design above, a monochrome silhouette of the same glyph (monitor +
+// toggle): solid black where the bezel/stand is, and transparent where
+// the screen and the toggle knob would be. macOS recolors it on its own
+// depending on the menu bar theme.
 func DrawTemplate(size int) *image.NRGBA {
 	const superSample = 4
 	hi := size * superSample
@@ -190,7 +190,7 @@ func (r rect) contains(x, y float64) bool {
 	return x >= r.x0 && x <= r.x1 && y >= r.y0 && y <= r.y1
 }
 
-// roundedContains aproxima un rectángulo con esquinas redondeadas de radio r.
+// roundedContains approximates a rectangle with rounded corners of radius r.
 func (r rect) roundedContains(x, y, radius float64) bool {
 	if x < r.x0 || x > r.x1 || y < r.y0 || y > r.y1 {
 		return false
@@ -215,10 +215,9 @@ func dist(x0, y0, x1, y1 float64) float64 {
 	return math.Sqrt(dx*dx + dy*dy)
 }
 
-// paintTemplate dibuja el monitor con un toggle "ON" simplificado en negro
-// sólido sobre transparente: la pantalla y la perilla del toggle quedan
-// recortadas (transparentes) para que el glifo se lea con claridad a los
-// 18-22pt de una barra de menú.
+// paintTemplate draws the monitor with a simplified "ON" toggle in solid
+// black on transparent: the screen and the toggle knob are cut out
+// (transparent) so the glyph reads clearly at the 18-22pt of a menu bar.
 func paintTemplate(img *image.NRGBA, s float64) {
 	monitor := rect{x0: 0.08 * s, y0: 0.14 * s, x1: 0.92 * s, y1: 0.72 * s}
 	screenInset := 0.05 * s

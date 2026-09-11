@@ -1,22 +1,22 @@
-// Package autostart activa/desactiva que la app arranque sola al iniciar
-// sesión en el sistema. La implementación es específica de cada SO (ver
-// autostart_windows.go y autostart_darwin.go) pero ambas son solo
-// Go estándar + APIs del SO: sin cgo, sin dependencias nuevas.
+// Package autostart enables/disables the app to launch on its own when the
+// system session starts. The implementation is OS-specific (see
+// autostart_windows.go and autostart_darwin.go) but both use only
+// standard Go + OS APIs: no cgo, no new dependencies.
 package autostart
 
-// IsEnabled indica si el autoarranque ya está configurado para el
-// ejecutable actual.
+// IsEnabled reports whether autostart is already configured for the
+// current executable.
 func IsEnabled() (bool, error) {
 	return isEnabled()
 }
 
-// Enable configura el sistema para lanzar el ejecutable actual al iniciar
-// sesión.
+// Enable configures the system to launch the current executable when the
+// session starts.
 func Enable() error {
 	return enable()
 }
 
-// Disable quita esa configuración.
+// Disable removes that configuration.
 func Disable() error {
 	return disable()
 }

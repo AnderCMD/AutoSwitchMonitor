@@ -8,9 +8,9 @@ import (
 	"golang.org/x/sys/windows/registry"
 )
 
-// Usamos el "Run" key de HKCU (por-usuario, no necesita permisos de
-// administrador) en vez de una tarea programada o un acceso directo en
-// shell:startup: es una sola llamada de registro, sin crear archivos.
+// We use HKCU's "Run" key (per-user, no administrator permissions needed)
+// instead of a scheduled task or a shortcut in shell:startup: it's a single
+// registry call, with no files created.
 const runKeyPath = `Software\Microsoft\Windows\CurrentVersion\Run`
 
 const valueName = "AutoSwitchMonitor"
@@ -18,7 +18,7 @@ const valueName = "AutoSwitchMonitor"
 func isEnabled() (bool, error) {
 	k, err := registry.OpenKey(registry.CURRENT_USER, runKeyPath, registry.QUERY_VALUE)
 	if err != nil {
-		return false, nil // la clave "Run" no existe todavía: no está habilitado
+		return false, nil // the "Run" key doesn't exist yet: not enabled
 	}
 	defer k.Close()
 
@@ -50,7 +50,7 @@ func enable() error {
 func disable() error {
 	k, err := registry.OpenKey(registry.CURRENT_USER, runKeyPath, registry.SET_VALUE)
 	if err != nil {
-		return nil // sin la clave, ya está "deshabilitado"
+		return nil // without the key, it's already "disabled"
 	}
 	defer k.Close()
 

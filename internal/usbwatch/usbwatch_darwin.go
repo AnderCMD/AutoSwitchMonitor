@@ -19,8 +19,8 @@ type spRoot struct {
 	SPUSBDataType []spItem `json:"SPUSBDataType"`
 }
 
-// list usa la utilidad de sistema `system_profiler` (incluida en todo
-// macOS, sin dependencias adicionales) para enumerar dispositivos USB.
+// list uses the `system_profiler` system utility (bundled with every
+// macOS install, no extra dependencies) to enumerate USB devices.
 func list() ([]Device, error) {
 	out, err := exec.Command("system_profiler", "SPUSBDataType", "-json").Output()
 	if err != nil {
@@ -49,7 +49,7 @@ func list() ([]Device, error) {
 	return devices, nil
 }
 
-// extractIDs normaliza campos como "0x046d  (Logitech Inc.)" a "046d".
+// extractIDs normalizes fields like "0x046d  (Logitech Inc.)" to "046d".
 func extractIDs(it spItem) (vid, pid string, ok bool) {
 	vid = normalizeHexID(it.VendorID)
 	pid = normalizeHexID(it.ProductID)

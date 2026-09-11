@@ -46,9 +46,9 @@ jobs:
           name: ${{ matrix.artifact }}
           path: ${{ matrix.binary }}
 
-  # Solo corre cuando el push es un tag "v*" (ej. v1.0.0). Junta los
-  # binarios que ya compiló el job "build" para windows y macOS y publica
-  # un Release en GitHub con ambos adjuntos — no hay que subir nada a mano.
+  # Only runs when the push is a "v*" tag (e.g. v1.0.0). Collects the
+  # binaries already built by the "build" job for windows and macOS and
+  # publishes a GitHub Release with both attached — nothing to upload by hand.
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: build

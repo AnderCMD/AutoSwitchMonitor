@@ -1,16 +1,15 @@
-// Command autoswitchmonitor corre en segundo plano (bandeja del sistema) y:
+// Command autoswitchmonitor runs in the background (system tray) and:
 //
-//  1. Vigila un dispositivo USB específico (el que se mueve con el switch
-//     KVM) y, cuando aparece, cambia automáticamente la entrada de video
-//     del monitor a la que corresponde a esta PC (DDC/CI).
-//  2. Registra combinaciones de teclas globales configurables para forzar
-//     el cambio de entrada manualmente (útil para la PC que no está
-//     conectada al KVM, o para saltar a cualquier entrada en cualquier
-//     momento).
+//  1. Watches a specific USB device (the one that moves with the KVM
+//     switch) and, when it appears, automatically switches the monitor's
+//     video input to the one that corresponds to this PC (DDC/CI).
+//  2. Registers configurable global hotkeys to force the input switch
+//     manually (useful for the PC that isn't connected to the KVM, or to
+//     jump to any input at any time).
 //
-// Cada PC corre su propia instancia con su propio config.yaml (ver
-// internal/config). Usa `-scan` para identificar el vendor_id/product_id
-// del dispositivo USB que debes vigilar.
+// Each PC runs its own instance with its own config.yaml (see
+// internal/config). Use `-scan` to identify the vendor_id/product_id of
+// the USB device you need to watch.
 package main
 
 import (
@@ -28,8 +27,8 @@ import (
 )
 
 func main() {
-	scan := flag.Bool("scan", false, "Lista los dispositivos USB conectados cada segundo, para identificar el vendor_id/product_id del dispositivo que cambia con el KVM (enciende/apaga el KVM entre PCs mientras corre esto y compara la lista)")
-	printConfigPath := flag.Bool("config-path", false, "Imprime la ruta del archivo config.yaml y termina")
+	scan := flag.Bool("scan", false, "Lists connected USB devices every second, to identify the vendor_id/product_id of the device that changes with the KVM (turn the KVM on/off between PCs while this runs and compare the list)")
+	printConfigPath := flag.Bool("config-path", false, "Prints the path to config.yaml and exits")
 	flag.Parse()
 
 	if *printConfigPath {
@@ -48,27 +47,27 @@ func main() {
 
 	cfg, path, err := config.Load()
 	if err != nil {
-		log.Fatalf("cargando configuración: %v", err)
+		log.Fatalf("loading config: %v", err)
 	}
-	fmt.Fprintf(os.Stderr, "AutoSwitchMonitor usando config: %s\n", path)
+	fmt.Fprintf(os.Stderr, "AutoSwitchMonitor using config: %s\n", path)
 
-	// golang.design/x/hotkey necesita que el registro y el loop de eventos
-	// corran en el hilo principal del SO (crítico en macOS por CGEventTap).
+	// golang.design/x/hotkey needs the registration and event loop to run
+	// on the OS main thread (critical on macOS because of CGEventTap).
 	mainthread.Init(func() {
 		trayapp.Run(cfg, path)
 	})
 }
 
 func runScan() {
-	fmt.Println("Escaneando dispositivos USB. Cambia el KVM entre tus PCs y observa qué")
-	fmt.Println("vendor_id:product_id aparece/desaparece. Ctrl+C para salir.")
+	fmt.Println("Scanning USB devices. Switch the KVM between your PCs and watch which")
+	fmt.Println("vendor_id:product_id appears/disappears. Ctrl+C to quit.")
 	fmt.Println()
 
 	prev := map[string]usbwatch.Device{}
 	for {
 		devices, err := usbwatch.List()
 		if err != nil {
-			log.Fatalf("listando dispositivos USB: %v", err)
+			log.Fatalf("listing USB devices: %v", err)
 		}
 
 		curr := map[string]usbwatch.Device{}
@@ -79,12 +78,12 @@ func runScan() {
 
 		for key, d := range curr {
 			if _, existed := prev[key]; !existed {
-				fmt.Printf("+ CONECTADO   %-4s:%-4s  %s\n", d.VendorID, d.ProductID, d.Name)
+				fmt.Printf("+ CONNECTED    %-4s:%-4s  %s\n", d.VendorID, d.ProductID, d.Name)
 			}
 		}
 		for key, d := range prev {
 			if _, still := curr[key]; !still {
-				fmt.Printf("- DESCONECTADO %-4s:%-4s  %s\n", d.VendorID, d.ProductID, d.Name)
+				fmt.Printf("- DISCONNECTED %-4s:%-4s  %s\n", d.VendorID, d.ProductID, d.Name)
 			}
 		}
 

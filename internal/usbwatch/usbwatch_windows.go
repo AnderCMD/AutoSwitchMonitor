@@ -11,17 +11,17 @@ import (
 )
 
 const (
-	digcfPresent    = 0x00000002
-	digcfAllClasses = 0x00000004
+	digcfPresent                   = 0x00000002
+	digcfAllClasses                = 0x00000004
 	errorNoMoreItems syscall.Errno = 259
 )
 
 var (
 	setupapi = windows.NewLazySystemDLL("setupapi.dll")
 
-	procSetupDiGetClassDevsW        = setupapi.NewProc("SetupDiGetClassDevsW")
-	procSetupDiEnumDeviceInfo       = setupapi.NewProc("SetupDiEnumDeviceInfo")
-	procSetupDiGetDeviceInstanceIdW = setupapi.NewProc("SetupDiGetDeviceInstanceIdW")
+	procSetupDiGetClassDevsW         = setupapi.NewProc("SetupDiGetClassDevsW")
+	procSetupDiEnumDeviceInfo        = setupapi.NewProc("SetupDiEnumDeviceInfo")
+	procSetupDiGetDeviceInstanceIdW  = setupapi.NewProc("SetupDiGetDeviceInstanceIdW")
 	procSetupDiDestroyDeviceInfoList = setupapi.NewProc("SetupDiDestroyDeviceInfoList")
 )
 
@@ -32,8 +32,8 @@ type spDevinfoData struct {
 	Reserved  uintptr
 }
 
-// list enumera todos los dispositivos actualmente presentes bajo el árbol
-// "USB" usando SetupAPI (no requiere libusb ni cgo).
+// list enumerates all devices currently present under the "USB" tree
+// using SetupAPI (needs no libusb or cgo).
 func list() ([]Device, error) {
 	enumerator, err := syscall.UTF16PtrFromString("USB")
 	if err != nil {
@@ -99,7 +99,7 @@ func list() ([]Device, error) {
 	return devices, nil
 }
 
-// parseInstanceID extrae VID/PID de un instance ID tipo:
+// parseInstanceID extracts VID/PID from an instance ID like:
 // "USB\VID_046D&PID_C52B\6&2f1c3a0&0&1"
 func parseInstanceID(id string) (vid, pid string, ok bool) {
 	upper := strings.ToUpper(id)

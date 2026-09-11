@@ -1,23 +1,23 @@
 ---
 name: Bug report
-about: Algo no funciona como debería
+about: Something isn't working as expected
 title: ""
 labels: bug
 ---
 
-**Descripción del problema**
+**Description of the problem**
 
-**Sistema operativo y versión** (ej. Windows 11 24H2 / macOS 15 Sequoia):
+**Operating system and version** (e.g. Windows 11 24H2 / macOS 15 Sequoia):
 
-**Marca y modelo del monitor**:
+**Monitor brand and model**:
 
-**Marca y modelo del switch KVM**:
+**KVM switch brand and model**:
 
-**Pasos para reproducir**:
+**Steps to reproduce**:
 
-**Log de consola** (corre `AutoSwitchMonitor.exe` o `./AutoSwitchMonitor`
-desde una terminal, no desde el acceso directo, y pega aquí la salida):
+**Console log** (run `AutoSwitchMonitor.exe` or `./AutoSwitchMonitor` from
+a terminal, not from the shortcut, and paste the output here):
 
 ```
-pega el log aquí
+paste the log here
 ```

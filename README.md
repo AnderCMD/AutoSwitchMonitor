@@ -10,199 +10,201 @@
   <a href="https://github.com/AnderCMD/AutoSwitchMonitor/releases"><img src="https://img.shields.io/github/v/release/AnderCMD/AutoSwitchMonitor?include_prereleases" alt="latest release"></a>
 </p>
 
-Cambia automáticamente la entrada de video de tu monitor (DDC/CI) cuando
-mueves tu switch KVM USB entre PCs, y expone combinaciones de teclas
-globales configurables para cambiar de entrada manualmente. Objetivo: dejar
-de usar los botones físicos del monitor.
+Automatically switches your monitor's video input (DDC/CI) when you move
+your USB KVM switch between PCs, and exposes configurable global hotkeys to
+switch inputs manually. Goal: stop using the monitor's physical buttons.
 
-Binario único, sin runtime (Go), ~7 MB, corre en la bandeja del sistema.
-Windows y macOS.
+Single binary, no runtime (Go), ~7 MB, runs in the system tray. Windows and
+macOS.
 
-## Cómo funciona (importante entender esto antes de configurar)
+## How it works (important to understand before configuring)
 
-Tu KVM (según lo que describiste) **solo comparte teclado/mouse entre 2
-PCs**; el video de cada PC va conectado directo a una entrada distinta del
-monitor (DP, HDMI1, HDMI2). Por eso hay que correr **una instancia de esta
-app en cada una de las 2 PCs conectadas al KVM**, y opcionalmente una
-tercera instancia en la PC conectada directo a HDMI2 (solo para el hotkey
-manual, sin autodetección).
+Your KVM (as you described it) **only shares keyboard/mouse between 2
+PCs**; the video from each PC is connected directly to a different monitor
+input (DP, HDMI1, HDMI2). That's why you need to run **one instance of this
+app on each of the 2 PCs connected to the KVM**, and optionally a third
+instance on the PC connected directly to HDMI2 (only for the manual
+hotkey, without autodetection).
 
-Cada instancia:
+Each instance:
 
-1. Vigila un dispositivo USB específico (ej. el teclado/mouse que pasa por
-   el KVM). Cuando ese dispositivo **aparece** en esa PC, significa que el
-   KVM te acaba de seleccionar a ti → la app manda por DDC/CI "cambia el
-   monitor a mi entrada".
-2. Además registra hotkeys globales para forzar el cambio a cualquier
-   entrada en cualquier momento (útil sobre todo en la PC que no está en el
-   KVM).
+1. Watches a specific USB device (e.g. the keyboard/mouse that passes
+   through the KVM). When that device **appears** on that PC, it means the
+   KVM has just selected you → the app sends a DDC/CI command "switch the
+   monitor to my input".
+2. It also registers global hotkeys to force a switch to any input at any
+   time (useful especially on the PC that isn't on the KVM).
 
-**Limitación real de DDC/CI a tener en cuenta:** muchos monitores solo
-responden a comandos DDC/CI por el cable de la entrada que está *activa* en
-ese momento. Es decir, para saltar de HDMI1 a HDMI2, normalmente el comando
-debe salir desde la PC que hoy se está mostrando (HDMI1), no desde la PC
-"de destino". Esto es justo lo que logra el flujo de arriba: quien tiene el
-control en ese momento es quien manda el cambio.
+**Real DDC/CI limitation to keep in mind:** many monitors only respond to
+DDC/CI commands over the cable of the input that's currently *active*.
+That is, to jump from HDMI1 to HDMI2, the command normally has to come
+from the PC that's currently being displayed (HDMI1), not from the
+"target" PC. This is exactly what the flow above achieves: whoever has
+control at that moment is the one who sends the switch command.
 
-## Instalación / build
+## Installation / build
 
-Necesitas Go 1.21+ y `CGO_ENABLED=1` (viene activado por defecto si tienes
-un compilador C instalado; en Windows, `winget install GoLang.Go` ya trae
-lo necesario en la mayoría de los casos — si falla el build, instala
-[TDM-GCC](https://jmeubank.github.io/tdm-gcc/) o usa
+You need Go 1.21+ and `CGO_ENABLED=1` (enabled by default if you have a C
+compiler installed; on Windows, `winget install GoLang.Go` already brings
+what's needed in most cases — if the build fails, install
+[TDM-GCC](https://jmeubank.github.io/tdm-gcc/) or use
 `winget install -e --id BrechtSanders.WinLibs.POSIX.UCRT`).
 
 ```bash
 make build
 ```
 
-Esto genera `AutoSwitchMonitor.exe` en Windows o `AutoSwitchMonitor` en
-macOS/Linux (el `Makefile` se encarga de la extensión correcta por SO). Si
-no tienes `make`, el equivalente manual es:
+This generates `AutoSwitchMonitor.exe` on Windows or `AutoSwitchMonitor` on
+macOS/Linux (the `Makefile` takes care of the correct extension per OS). If
+you don't have `make`, the manual equivalent is:
 
 ```bash
-# Windows — el nombre DEBE incluir ".exe" explícitamente: si le pasas
-# -o sin extensión, Go crea el archivo literalmente sin ".exe" y no lo
-# vas a poder ejecutar con doble clic ni encontrar en el Explorador.
-# -ldflags -H=windowsgui evita que se abra una ventana de consola junto
-# con el ícono de bandeja cada vez que corres el .exe.
+# Windows — the name MUST explicitly include ".exe": if you pass -o
+# without an extension, Go creates the file literally without ".exe" and
+# you won't be able to run it by double-clicking or find it in Explorer.
+# -ldflags -H=windowsgui prevents a console window from opening alongside
+# the tray icon every time you run the .exe.
 go build -ldflags="-H=windowsgui" -o AutoSwitchMonitor.exe ./cmd/autoswitchmonitor
 
 # macOS / Linux
 go build -o AutoSwitchMonitor ./cmd/autoswitchmonitor
 ```
 
-### Depurar (ver los logs)
+### Debugging (viewing the logs)
 
-El build normal de Windows (`make build`) no muestra ninguna consola, así
-que los `log.Printf` no se ven a simple vista. Para depurar:
+The normal Windows build (`make build`) doesn't show any console, so the
+`log.Printf` output isn't visible at a glance. To debug:
 
 ```bash
-# Opción 1: build de consola aparte, no afecta al build normal
+# Option 1: separate console build, doesn't affect the normal build
 make build-debug
 ./AutoSwitchMonitor-debug.exe
 
-# Opción 2: redirige la salida del build normal a un archivo
+# Option 2: redirect the normal build's output to a file
 .\AutoSwitchMonitor.exe 2> debug.log
 ```
 
 ### macOS
 
-macOS **no tiene una API pública de Apple para DDC/CI**. Esta app delega el
-cambio de entrada en una herramienta de línea de comandos ya probada por la
-comunidad — instala **una** de estas con Homebrew:
+macOS **has no public Apple API for DDC/CI**. This app delegates the input
+switch to a community-proven command-line tool — install **one** of these
+with Homebrew:
 
 ```bash
-# Apple Silicon (M1/M2/M3...), monitores por USB-C/DP Alt Mode:
+# Apple Silicon (M1/M2/M3...), monitors via USB-C/DP Alt Mode:
 brew install waydabber/m1ddc/m1ddc
 
-# Mac Intel:
+# Intel Mac:
 brew install ddcctl
 ```
 
-> Nota: `m1ddc` manda los comandos DDC/CI por el canal AUX de **USB-C/DisplayPort
-> Alt Mode** — necesita ese canal de punta a punta. Esto falla (típicamente con
-> `DDC communication failure: (iokit/?) unknown subsystem error`) si en cualquier
-> punto del camino hay una conversión a HDMI: el puerto HDMI integrado de los
-> M1/M2 base, o un **adaptador/cable USB-C→HDMI**, casi nunca pasan ese canal
-> aunque el video sí se vea bien. **Los MacBook Air/Pro con Apple Silicon no
-> tienen puerto HDMI físico** — cualquier salida HDMI en ellos ya es, por
-> definición, un cable/adaptador USB-C→HDMI, así que en esos equipos esto no
-> es un caso raro sino el escenario típico. Prueba primero el comando suelto
-> para descartar tu app: `m1ddc display list` y luego `m1ddc display <N> set
-> input <código>` — si eso también falla, es la conexión física, no
-> AutoSwitchMonitor. La forma más confiable de que el DDC/CI funcione en
-> Apple Silicon es una ruta DisplayPort real de punta a punta (cable
-> USB-C→DisplayPort, o USB-C→USB-C si el monitor tiene entrada USB-C con
-> video) — ahí Apple no expone ninguna API oficial, pero al menos el canal
-> AUX llega completo hasta el monitor.
+> Note: `m1ddc` sends DDC/CI commands over the AUX channel of
+> **USB-C/DisplayPort Alt Mode** — it needs that channel end to end. This
+> fails (typically with
+> `DDC communication failure: (iokit/?) unknown subsystem error`) if at any
+> point along the way there's a conversion to HDMI: the built-in HDMI port
+> on base M1/M2 models, or a **USB-C→HDMI adapter/cable**, almost never
+> pass that channel through even though the video itself looks fine.
+> **Apple Silicon MacBook Air/Pro models have no physical HDMI port** — any
+> HDMI output on them is, by definition, already a USB-C→HDMI cable/adapter,
+> so on those machines this isn't a rare edge case but the typical
+> scenario. Try the standalone command first to rule out your app:
+> `m1ddc display list` and then `m1ddc display <N> set input <code>` — if
+> that also fails, it's the physical connection, not AutoSwitchMonitor. The
+> most reliable way to get DDC/CI working on Apple Silicon is a genuine
+> end-to-end DisplayPort path (USB-C→DisplayPort cable, or USB-C→USB-C if
+> the monitor has a USB-C input with video) — there Apple doesn't expose
+> any official API, but at least the AUX channel reaches the monitor
+> intact.
 >
-> Si solo tienes HDMI disponible, **no es 100% imposible, pero depende del
-> chip que trae tu adaptador/cable/hub** — muchos adaptadores baratos de un
-> solo puerto no reenvían el canal DDC, pero varios hubs USB-C multipuerto
-> sí lo hacen. Reportes de la comunidad de
+> If you only have HDMI available, **it's not 100% impossible, but it
+> depends on the chip in your adapter/cable/hub** — many cheap single-port
+> adapters don't forward the DDC channel, but several multi-port USB-C hubs
+> do. Community reports from
 > [MonitorControl](https://github.com/MonitorControl/MonitorControl/discussions/1247):
 >
-> | Funcionan | No funcionan |
+> | Work | Don't work |
 > |---|---|
-> | Anker USB-C Hub 7-en-1 (con SD-Card) | Syntech USB-C to HDMI Adapter 4K |
-> | Anker USB-C Hub 7-en-1 (con LAN) | Atvoiti USB-C to HDMI Adapter |
+> | Anker USB-C Hub 7-in-1 (with SD-Card) | Syntech USB-C to HDMI Adapter 4K |
+> | Anker USB-C Hub 7-in-1 (with LAN) | Atvoiti USB-C to HDMI Adapter |
 > | | Baseus Typ-C Hub 4K HDMI RJ45 TF 100W |
 >
-> Si tienes un adaptador/hub USB-C→HDMI y quieres probar el tuyo: `m1ddc
-> display list` y luego `m1ddc display <N> set input <código>` (VCP típicos:
-> `0x0f`=DP1, `0x11`=HDMI1, `0x12`=HDMI2) — si eso responde sin error, tu
-> setup sí soporta DDC y AutoSwitchMonitor debería funcionar. La app
-> reintenta cada cambio de entrada 3 veces (el canal DDC es propenso a
-> fallos transitorios incluso en setups que sí funcionan), así que un fallo
-> consistente (no ocasional) suele indicar que el adaptador no reenvía el
-> canal. Si probaste el tuyo, abre un
-> [issue](https://github.com/AnderCMD/AutoSwitchMonitor/issues) contándonos
-> si funcionó o no — la idea es que esta tabla crezca con la comunidad.
+> If you have a USB-C→HDMI adapter/hub and want to test yours: `m1ddc
+> display list` and then `m1ddc display <N> set input <code>` (typical VCP
+> codes: `0x0f`=DP1, `0x11`=HDMI1, `0x12`=HDMI2) — if that responds without
+> error, your setup does support DDC and AutoSwitchMonitor should work. The
+> app retries each input switch 3 times (the DDC channel is prone to
+> transient failures even on setups that do work), so a consistent failure
+> (not occasional) usually indicates the adapter doesn't forward the
+> channel. If you tested yours, open an
+> [issue](https://github.com/AnderCMD/AutoSwitchMonitor/issues) letting us
+> know whether it worked — the idea is for this table to grow with the
+> community.
 
-> **Estado en macOS:** el código de macOS (`_darwin.go`) sigue la misma API
-> que el de Windows, compila limpio y ya se probó corriendo de verdad en un
-> Mac (Apple Silicon). Si algo falla en el tuyo, abre un
-> [issue](https://github.com/AnderCMD/AutoSwitchMonitor/issues) — se
-> agradecen reportes y PRs de gente con Mac a mano.
+> **macOS status:** the macOS code (`_darwin.go`) follows the same API as
+> Windows, compiles cleanly, and has already been tested running for real
+> on a Mac (Apple Silicon). If something fails on yours, open an
+> [issue](https://github.com/AnderCMD/AutoSwitchMonitor/issues) — reports
+> and PRs from Mac users are appreciated.
 
-#### App de bandeja (equivalente al .exe de Windows)
+#### Tray app (equivalent of the Windows .exe)
 
-`go build -o AutoSwitchMonitor ./cmd/autoswitchmonitor` genera un binario
-Unix suelto: si le haces doble clic en Finder, macOS lo abre dentro de una
-ventana de Terminal (no es una app de verdad). Para tener el equivalente
-real del `.exe` de Windows — doble clic, sin consola, sin ícono en el
-Dock, solo el ícono de bandeja — arma el `.app`:
+`go build -o AutoSwitchMonitor ./cmd/autoswitchmonitor` generates a plain
+Unix binary: if you double-click it in Finder, macOS opens it inside a
+Terminal window (it's not a real app). To get the real equivalent of the
+Windows `.exe` — double-click, no console, no Dock icon, only the tray
+icon — build the `.app`:
 
 ```bash
 make app
 ```
 
-Esto compila el binario y arma `AutoSwitchMonitor.app` (usa
-`packaging/darwin/Info.plist`, que marca la app como `LSUIElement`, y
-`assets/icon.icns`, generado por `make icons`). Doble clic para abrirlo, o
-`open AutoSwitchMonitor.app`.
+This compiles the binary and assembles `AutoSwitchMonitor.app` (uses
+`packaging/darwin/Info.plist`, which marks the app as `LSUIElement`, and
+`assets/icon.icns`, generated by `make icons`). Double-click to open it, or
+run `open AutoSwitchMonitor.app`.
 
-`AutoSwitchMonitor.app` se firma ad-hoc (`codesign -s -`) para que macOS lo
-deje correr — como no está firmado con un Developer ID ni notarizado, la
-primera vez puede que tengas que hacer clic derecho → Abrir en vez de doble
-clic normal, para que Gatekeeper te deje pasar.
+`AutoSwitchMonitor.app` is ad-hoc signed (`codesign -s -`) so macOS lets it
+run — since it isn't signed with a Developer ID nor notarized, the first
+time you may need to right-click → Open instead of a normal double-click,
+so Gatekeeper lets you through.
 
-## Configuración
+## Configuration
 
-Al correr la app por primera vez crea un `config.yaml` con valores por
-defecto en:
+The first time you run the app it creates a `config.yaml` with default
+values at:
 
 - Windows: `%APPDATA%\AutoSwitchMonitor\config.yaml`
 - macOS: `~/Library/Application Support/AutoSwitchMonitor/config.yaml`
 
-Puedes ver la ruta exacta con:
+You can see the exact path with:
 
 ```bash
 AutoSwitchMonitor -config-path
 ```
 
-### 1. Verifica los códigos DDC/CI de tu monitor
+### 1. Check your monitor's DDC/CI codes
 
-El `config.yaml` trae códigos típicos (`dp1=0x0f`, `hdmi1=0x11`,
-`hdmi2=0x12`), pero **varían por fabricante**. Si al cambiar de entrada no
-pasa nada o cambia a la entrada equivocada, busca en el manual de tu
-monitor la tabla de "Input Source" (VCP 0x60) o prueba otros valores
-comunes (`0x01`=VGA, `0x03`=DVI, `0x0f`=DisplayPort1, `0x10`=DisplayPort2,
+`config.yaml` ships with typical codes (`dp1=0x0f`, `hdmi1=0x11`,
+`hdmi2=0x12`), but they **vary by manufacturer**. If switching inputs does
+nothing or switches to the wrong input, look up the "Input Source" table
+(VCP 0x60) in your monitor's manual, or try other common values
+(`0x01`=VGA, `0x03`=DVI, `0x0f`=DisplayPort1, `0x10`=DisplayPort2,
 `0x11`=HDMI1, `0x12`=HDMI2).
 
-### 2. Identifica el dispositivo USB que vigila el KVM
+### 2. Identify the USB device the KVM watches
 
-Corre, en cada una de las 2 PCs conectadas al KVM:
+Run, on each of the 2 PCs connected to the KVM:
 
 ```bash
 AutoSwitchMonitor -scan
 ```
 
-Deja el comando corriendo y cambia el KVM un par de veces entre las dos
-PCs. Verás líneas `+ CONECTADO` / `- DESCONECTADO`; el `vendor_id:product_id`
-que aparece/desaparece justo cuando el KVM te selecciona/deselecciona es el
-que necesitas. Cópialo a `usb_watch` en el `config.yaml` de esa PC:
+Leave the command running and switch the KVM a couple of times between the
+two PCs. You'll see `+ CONNECTED` / `- DISCONNECTED` lines; the
+`vendor_id:product_id` that appears/disappears exactly when the KVM
+selects/deselects you is the one you need. Copy it into `usb_watch` in that
+PC's `config.yaml`:
 
 ```yaml
 usb_watch:
@@ -211,21 +213,21 @@ usb_watch:
   enabled: true
 ```
 
-En la PC que **no** está en el KVM (la de HDMI2 directo), deja
-`usb_watch.enabled: false` — solo usará los hotkeys.
+On the PC that's **not** on the KVM (the one connected directly to
+HDMI2), leave `usb_watch.enabled: false` — it will only use the hotkeys.
 
-### 3. Configura tu propia entrada por PC
+### 3. Set your own input per PC
 
-En cada `config.yaml`, `own_input` debe ser la entrada de *esa* PC:
+In each `config.yaml`, `own_input` must be the input for *that* PC:
 
-- PC A (en el KVM, cableada a DP): `own_input: dp1`
-- PC B (en el KVM, cableada a HDMI1): `own_input: hdmi1`
-- PC C (directa a HDMI2, sin KVM): `own_input: hdmi2`, `usb_watch.enabled: false`
+- PC A (on the KVM, wired to DP): `own_input: dp1`
+- PC B (on the KVM, wired to HDMI1): `own_input: hdmi1`
+- PC C (direct to HDMI2, no KVM): `own_input: hdmi2`, `usb_watch.enabled: false`
 
 ### 4. Hotkeys
 
-Por defecto: `Ctrl+Alt+1` → DP1, `Ctrl+Alt+2` → HDMI1, `Ctrl+Alt+3` →
-HDMI2, iguales en las 3 PCs. Edítalos libremente en `config.yaml`:
+By default: `Ctrl+Alt+1` → DP1, `Ctrl+Alt+2` → HDMI1, `Ctrl+Alt+3` →
+HDMI2, the same on all 3 PCs. Edit them freely in `config.yaml`:
 
 ```yaml
 hotkeys:
@@ -234,95 +236,95 @@ hotkeys:
     target: hdmi2
 ```
 
-Modificadores válidos: `ctrl`, `shift`, `alt` (o `option`), `win` (o
-`cmd`) — `win`/`cmd` y `alt`/`option` son alias entre sí para que el mismo
-config.yaml sirva en Windows y macOS. Teclas válidas: `0`-`9`, `a`-`z`.
+Valid modifiers: `ctrl`, `shift`, `alt` (or `option`), `win` (or `cmd`) —
+`win`/`cmd` and `alt`/`option` are aliases of each other so the same
+config.yaml works on both Windows and macOS. Valid keys: `0`-`9`, `a`-`z`.
 
-Después de editar `config.yaml`, reinicia la app para que tome los cambios
-(clic derecho en el ícono de bandeja → Salir, y vuelve a abrirla).
+After editing `config.yaml`, restart the app for the changes to take
+effect (right-click the tray icon → Quit, and open it again).
 
-## Uso diario
+## Daily use
 
-Corre el binario; aparece un ícono en la bandeja del sistema con:
+Run the binary; a system tray icon appears with:
 
-- Un ítem por cada entrada configurada, para cambiar manualmente con el mouse.
-- "Iniciar con el sistema" (checkbox, ver abajo).
-- "Abrir carpeta de configuración".
-- "Salir".
+- One item per configured input, to switch manually with the mouse.
+- "Start with system" (checkbox, see below).
+- "Open config folder".
+- "Quit".
 
-### Arrancar automáticamente con el sistema
+### Starting automatically with the system
 
-Actívalo/desactívalo directamente desde el ícono de bandeja → **"Iniciar
-con el sistema"** (checkbox). No hace falta tocar nada a mano:
+Enable/disable it directly from the tray icon → **"Start with system"**
+(checkbox). No manual steps needed:
 
-- **Windows:** se guarda en `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`
-  (por usuario, sin permisos de administrador).
-- **macOS:** crea un LaunchAgent en
+- **Windows:** saved in `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`
+  (per-user, no administrator permissions required).
+- **macOS:** creates a LaunchAgent at
   `~/Library/LaunchAgents/dev.andercmd.autoswitchmonitor.plist`.
 
-En macOS, la primera vez el sistema pedirá permiso de **Accesibilidad**
-(Ajustes → Privacidad y Seguridad → Accesibilidad) para que los hotkeys
-globales funcionen — es requisito de `golang.design/x/hotkey`, no algo que
-esta app pueda evitar.
+On macOS, the first time the system will ask for **Accessibility**
+permission (Settings → Privacy & Security → Accessibility) so the global
+hotkeys work — this is a requirement of `golang.design/x/hotkey`, not
+something this app can avoid.
 
-## Estructura del proyecto
+## Project structure
 
 ```
 cmd/autoswitchmonitor/   entry point + CLI (-scan, -config-path)
-internal/config/         carga/guarda config.yaml
-internal/ddc/            DDC/CI: nativo por Win32 API en Windows,
-                          shell-out a m1ddc/ddcctl en macOS
-internal/usbwatch/       enumeración USB por sondeo: SetupAPI en Windows
-                          (sin libusb/cgo), system_profiler en macOS
-internal/hotkeys/        hotkeys globales (golang.design/x/hotkey)
-internal/autostart/      activar/desactivar inicio con el sistema
-internal/trayapp/        ícono de bandeja + orquestación
-internal/appicon/        ícono a color (desde icon_master.png embebido) y silueta
-                          template de la barra de menú de macOS
-tools/render-icon-master/ rasteriza assets/icon.svg a internal/appicon/icon_master.png
-tools/gen-icon/          regenera assets/icon.png, assets/icon.ico y assets/icon.icns
-assets/icon.svg          diseño fuente del ícono (editar acá los cambios de logo)
-assets/                  icon.png / icon.ico / icon.icns usados por la bandeja, el
-                          .exe de Windows (embebido vía go-winres), el
-                          .app de macOS y este README
-packaging/darwin/        Info.plist del bundle AutoSwitchMonitor.app (make app)
+internal/config/         loads/saves config.yaml
+internal/ddc/            DDC/CI: native via Win32 API on Windows,
+                          shells out to m1ddc/ddcctl on macOS
+internal/usbwatch/       USB enumeration by polling: SetupAPI on Windows
+                          (no libusb/cgo), system_profiler on macOS
+internal/hotkeys/        global hotkeys (golang.design/x/hotkey)
+internal/autostart/      enable/disable start with system
+internal/trayapp/        tray icon + orchestration
+internal/appicon/        color icon (from embedded icon_master.png) and silhouette
+                          template for the macOS menu bar
+tools/render-icon-master/ rasterizes assets/icon.svg to internal/appicon/icon_master.png
+tools/gen-icon/          regenerates assets/icon.png, assets/icon.ico and assets/icon.icns
+assets/icon.svg          source icon design (edit logo changes here)
+assets/                  icon.png / icon.ico / icon.icns used by the tray, the
+                          Windows .exe (embedded via go-winres), the
+                          macOS .app and this README
+packaging/darwin/        Info.plist for the AutoSwitchMonitor.app bundle (make app)
 ```
 
-## Publicar un release
+## Publishing a release
 
-Cada push a un tag `v*` (ej. `v1.0.0`) dispara el workflow de GitHub
-Actions, que compila los binarios de Windows y macOS y los publica solos
-como un [Release](https://github.com/AnderCMD/AutoSwitchMonitor/releases)
-con notas generadas automáticamente — no hay que subir ni compilar nada a
-mano.
+Every push to a `v*` tag (e.g. `v1.0.0`) triggers the GitHub Actions
+workflow, which builds the Windows and macOS binaries and publishes them
+automatically as a
+[Release](https://github.com/AnderCMD/AutoSwitchMonitor/releases) with
+auto-generated notes — no need to upload or build anything by hand.
 
-**Desde VS Code (sin usar la terminal):**
+**From VS Code (without using the terminal):**
 
-1. Asegúrate de que tu último commit ya esté sincronizado (botón "Sync
-   Changes" / la nube en la barra inferior).
-2. `Ctrl+Shift+P` → escribe **"Git: Create Tag"** → escribe el nombre,
-   ej. `v1.0.0` → Enter (puedes dejar el mensaje vacío).
-3. `Ctrl+Shift+P` → **"Git: Push Tags"** → esto sube el tag a GitHub.
-4. En unos minutos, el Release aparece en la pestaña *Releases* del repo
-   con el `.exe` de Windows y el binario de macOS adjuntos.
+1. Make sure your latest commit is already synced (the "Sync Changes"
+   button / the cloud icon in the bottom bar).
+2. `Ctrl+Shift+P` → type **"Git: Create Tag"** → type the name, e.g.
+   `v1.0.0` → Enter (you can leave the message empty).
+3. `Ctrl+Shift+P` → **"Git: Push Tags"** → this pushes the tag to GitHub.
+4. Within a few minutes, the Release appears on the repo's *Releases* tab
+   with the Windows `.exe` and the macOS binary attached.
 
-## Decisiones de diseño (por qué está hecho así)
+## Design decisions (why it's built this way)
 
-- **Sin libusb/cgo para USB**: se usa SetupAPI en Windows y
-  `system_profiler` en macOS — ambos vienen con el SO, no hay que
-  distribuir ni instalar nada aparte para la detección USB.
-- **DDC/CI nativo solo en Windows** (`Dxva2.dll`): es la API pública y
-  estable de Microsoft, sin dependencias externas.
-- **DDC/CI vía `m1ddc`/`ddcctl` en macOS**: Apple no publica una API
-  soportada para esto; el propio DDC/CI en Apple Silicon depende de
-  frameworks privados que la comunidad ya mantiene actualizados en esas
-  herramientas. Reimplementarlo aquí sería frágil y de alto mantenimiento.
+- **No libusb/cgo for USB**: uses SetupAPI on Windows and
+  `system_profiler` on macOS — both ship with the OS, so nothing extra
+  needs to be distributed or installed for USB detection.
+- **Native DDC/CI only on Windows** (`Dxva2.dll`): it's Microsoft's public,
+  stable API, with no external dependencies.
+- **DDC/CI via `m1ddc`/`ddcctl` on macOS**: Apple doesn't publish a
+  supported API for this; DDC/CI itself on Apple Silicon depends on
+  private frameworks that the community already keeps up to date in these
+  tools. Reimplementing it here would be fragile and high-maintenance.
 
-## Contribuir
+## Contributing
 
-Los PRs e issues son bienvenidos — lee [CONTRIBUTING.md](CONTRIBUTING.md)
-antes de empezar.
+PRs and issues are welcome — read [CONTRIBUTING.md](CONTRIBUTING.md)
+before you start.
 
-## Licencia
+## License
 
 [MIT](LICENSE) © [AnderCMD](https://andercmd.dev)
