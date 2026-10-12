@@ -54,6 +54,16 @@ Open an issue. For bugs, include: OS and version, monitor brand/model, KVM
 brand/model, and the console log if the app shows one (run it from a
 terminal, not from the shortcut, to see the `log.Printf` output).
 
+## Branches and releases
+
+- `dev` is the working branch: open feature branches/PRs against it, or push to it directly.
+- `main` is protected and only receives PRs from `dev`. Every merge into
+  `main` publishes a new GitHub Release automatically (patch bump of the
+  latest `v*` tag; put `#minor` or `#major` in the merge commit message for
+  a bigger bump).
+- CI (`go vet`, `go test`, build for Windows and macOS) runs on every push
+  and PR to `main` and `dev`.
+
 ## Pull requests
 
 - One PR = one focused change. Avoid mixing refactors with features.
