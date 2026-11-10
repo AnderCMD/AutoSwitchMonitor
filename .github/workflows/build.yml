@@ -31,6 +31,16 @@ jobs:
         with:
           go-version: "1.23"
 
+      # Embeds icon + manifest + version info (company, product, description)
+      # into the Windows .exe. Unsigned binaries with no metadata are far more
+      # likely to be flagged as malware by Windows Defender heuristics.
+      - name: Embed Windows resources
+        if: runner.os == 'Windows'
+        working-directory: cmd/autoswitchmonitor
+        run: |
+          go install github.com/tc-hib/go-winres@v0.3.3
+          go-winres make
+
       - name: go vet
         run: go vet ./...
 
@@ -38,7 +48,7 @@ jobs:
         run: go test ./...
 
       - name: Build
-        run: go build -ldflags="${{ matrix.ldflags }}" -o ${{ matrix.binary }} ./cmd/autoswitchmonitor
+        run: go build -trimpath -ldflags="${{ matrix.ldflags }}" -o ${{ matrix.binary }} ./cmd/autoswitchmonitor
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
