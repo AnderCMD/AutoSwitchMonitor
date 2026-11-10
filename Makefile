@@ -10,10 +10,15 @@ else
 	LDFLAGS :=
 endif
 
-.PHONY: build build-debug run scan icons app vet test clean
+.PHONY: winres build build-debug run scan icons app vet test clean
+
+# Regenerates the Windows resources (icon, manifest, version info) from
+# cmd/autoswitchmonitor/winres/winres.json into rsrc_windows_*.syso.
+winres:
+	cd cmd/autoswitchmonitor && go run github.com/tc-hib/go-winres@v0.3.3 make
 
 build:
-	go build -ldflags="$(LDFLAGS)" -o $(BINARY)$(EXT) ./cmd/autoswitchmonitor
+	go build -trimpath -ldflags="$(LDFLAGS)" -o $(BINARY)$(EXT) ./cmd/autoswitchmonitor
 
 # Build with a visible console (console subsystem), to see log.Printf
 # output live while debugging. See also: make run, or `2> debug.log`.
@@ -31,7 +36,7 @@ scan:
 # Only needs to be run if you change the icon artwork.
 icons:
 	go run ./tools/gen-icon
-	cd cmd/autoswitchmonitor && go run github.com/tc-hib/go-winres@latest simply --icon ../../assets/icon.ico
+	cd cmd/autoswitchmonitor && go run github.com/tc-hib/go-winres@v0.3.3 make
 
 # Packages AutoSwitchMonitor.app: on macOS, double-clicking the bare
 # binary opens it inside a Terminal window (it's not a .app). This

@@ -70,6 +70,22 @@ go build -ldflags="-H=windowsgui" -o AutoSwitchMonitor.exe ./cmd/autoswitchmonit
 go build -o AutoSwitchMonitor ./cmd/autoswitchmonitor
 ```
 
+### Windows Defender / SmartScreen warnings
+
+The `.exe` is not code-signed, and it does things that heuristic scanners
+associate with malware (tray app with no window, global hotkeys, USB
+enumeration, a `Run` registry entry for autostart). Windows Defender may
+therefore flag it as a false positive (e.g. `Trojan:Win32/Wacatac`). The
+source is fully open and the release is built by GitHub Actions. If it gets
+quarantined:
+
+- Add an exclusion: *Windows Security → Virus & threat protection → Manage
+  settings → Exclusions*, or restore it from *Protection history*.
+- Report the false positive to Microsoft:
+  <https://www.microsoft.com/en-us/wdsi/filesubmission> (choose "Software
+  developer"). This is what permanently clears the detection.
+- Or build it yourself with `make build` (see above).
+
 ### Debugging (viewing the logs)
 
 The normal Windows build (`make build`) doesn't show any console, so the
