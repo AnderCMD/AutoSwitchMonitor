@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/AnderCMD/AutoSwitchMonitor/actions/workflows/build.yml"><img src="https://github.com/AnderCMD/AutoSwitchMonitor/actions/workflows/build.yml/badge.svg" alt="build status"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT license"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="Apache 2.0 license"></a>
   <a href="https://github.com/AnderCMD/AutoSwitchMonitor/releases"><img src="https://img.shields.io/github/v/release/AnderCMD/AutoSwitchMonitor?include_prereleases" alt="latest release"></a>
 </p>
 
@@ -343,4 +343,4 @@ before you start.
 
 ## License
 
-[MIT](LICENSE) © [AnderCMD](https://andercmd.dev)
+[Apache 2.0](LICENSE) © [AnderCMD](https://andercmd.dev)

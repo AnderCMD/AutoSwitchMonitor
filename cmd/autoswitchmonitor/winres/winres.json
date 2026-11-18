@@ -43,7 +43,7 @@
             "FileDescription": "AutoSwitchMonitor - KVM monitor input switcher",
             "FileVersion": "1.1.1.0",
             "InternalName": "AutoSwitchMonitor",
-            "LegalCopyright": "Copyright (c) AnderCMD. MIT License.",
+            "LegalCopyright": "Copyright (c) AnderCMD. Apache 2.0 License.",
             "OriginalFilename": "AutoSwitchMonitor.exe",
             "ProductName": "AutoSwitchMonitor",
             "ProductVersion": "1.1.1"
