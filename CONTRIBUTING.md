@@ -79,3 +79,9 @@ terminal, not from the shortcut, to see the `log.Printf` output).
   against the OS without external hardware (e.g. `internal/autostart`
   against the real registry/LaunchAgent), add a test — run `make test`.
   For everything else, describe in the PR how you tested it manually.
+
+## License
+
+This project is licensed under the [Apache License 2.0](LICENSE). By
+submitting a contribution you agree that it is licensed under the same terms
+(see section 5 of the license).
